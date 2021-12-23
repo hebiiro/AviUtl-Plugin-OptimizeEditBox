@@ -2,12 +2,55 @@
 #include "OptimizeEditBox.h"
 
 //---------------------------------------------------------------------
+// Aulsさんのソースコードを拝借しています
+//---------------------------------------------------------------------
+
+namespace auls {
+
+inline int AviUtl_GetFilterNumber(FILTER *fp)
+{
+	SYS_INFO si;
+	fp->exfunc->get_sys_info(NULL, &si);
+	return si.filter_n;
+}
+
+inline FILTER* AviUtl_GetFilter(FILTER *fp, LPCSTR name)
+{
+	for(int i = AviUtl_GetFilterNumber(fp); i;) {
+		FILTER *temp = (FILTER*)fp->exfunc->get_filterp(--i);
+		if(!strcmp(temp->name, name)) return temp;
+	}
+	return NULL;
+}
+
+inline FILTER* Exedit_GetFilter(FILTER *fp)
+{
+	return AviUtl_GetFilter(fp, "拡張編集");
+}
+
+} // namespace auls
+
+//---------------------------------------------------------------------
+// exedit のフィルタ関数のフック関数
+
+using func_proc_type = decltype(FILTER::func_proc);
+func_proc_type true_exedit_func_proc = 0;
+BOOL hook_exedit_func_proc(void *fp, FILTER_PROC_INFO *fpip)
+{
+	MY_TRACE(_T("hook_exedit_func_proc() begin\n"));
+
+	theApp.exedit_proc((FILTER*)fp, fpip);
+
+	return true_exedit_func_proc(fp, fpip);
+}
+
+//---------------------------------------------------------------------
 //		フィルタ構造体のポインタを渡す関数
 //---------------------------------------------------------------------
 EXTERN_C FILTER_DLL __declspec(dllexport) * __stdcall GetFilterTable(void)
 {
 	static TCHAR g_filterName[] = TEXT("エディットボックス最適化");
-	static TCHAR g_filterInformation[] = TEXT("エディットボックス最適化 version 2.0.1 by 蛇色");
+	static TCHAR g_filterInformation[] = TEXT("エディットボックス最適化 version 2.1.0 by 蛇色");
 
 	static FILTER_DLL filter =
 	{
@@ -43,6 +86,17 @@ EXTERN_C FILTER_DLL __declspec(dllexport) * __stdcall GetFilterTable(void)
 
 BOOL func_init(FILTER *fp)
 {
+	// exedit フィルタ関数をフックする。
+	FILTER* exedit = auls::Exedit_GetFilter(fp);
+
+	MY_TRACE_HEX(exedit);
+
+	if (exedit)
+	{
+		true_exedit_func_proc = exedit->func_proc;
+		exedit->func_proc = hook_exedit_func_proc;
+	}
+
 	return theApp.init(fp);
 }
 

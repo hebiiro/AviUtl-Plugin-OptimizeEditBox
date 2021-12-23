@@ -9,13 +9,13 @@ public:
 	UINT_PTR m_timerId;
 	WPARAM m_wParam;
 	LPARAM m_lParam;
-	bool m_doDefault;
 
 	BOOL m_optimizeTimeLine;
 	int m_editBoxDelay;
 	int m_trackBarDelay;
 
 	HHOOK m_hook;
+	WNDPROC m_orig_exedit_wndProc;
 
 public:
 
@@ -26,16 +26,19 @@ public:
 	BOOL init(FILTER *fp);
 	BOOL exit(FILTER *fp);
 	BOOL proc(FILTER *fp, FILTER_PROC_INFO *fpip);
-	LRESULT exedit_wndProc(WNDPROC orig, HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
-	void timerProc(HWND hwnd, UINT message, UINT_PTR id, DWORD time);
-	LRESULT cbtProc(int code, WPARAM wParam, LPARAM lParam);
+	BOOL exedit_proc(FILTER *fp, FILTER_PROC_INFO *fpip);
 
-	void startTimer(WPARAM wParam, LPARAM lParam, int delay);
+	LRESULT hook_exedit_wndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+	static LRESULT CALLBACK _hook_exedit_wndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+	void startTimer(WPARAM wParam, LPARAM lParam, int elapse);
 	void stopTimer();
+	void timerProc(HWND hwnd, UINT message, UINT_PTR id, DWORD time);
 	static void CALLBACK _timerProc(HWND hwnd, UINT message, UINT_PTR id, DWORD time);
 
 	void hook();
 	void unhook();
+	LRESULT cbtProc(int code, WPARAM wParam, LPARAM lParam);
 	static LRESULT CALLBACK _cbtProc(int code, WPARAM wParam, LPARAM lParam);
 
 };

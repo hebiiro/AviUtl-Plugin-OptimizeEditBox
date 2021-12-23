@@ -8,13 +8,6 @@ void ___outputLog(LPCTSTR text, LPCTSTR output)
 {
 }
 
-// exedit オブジェクト編集ダイアログをサブクラス化するための関数
-WNDPROC orig_exedit_wndProc = 0;
-LRESULT CALLBACK hook_exedit_wndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	return theApp.exedit_wndProc(orig_exedit_wndProc, hwnd, message, wParam, lParam);
-}
-
 COptimizeEditBoxApp::COptimizeEditBoxApp()
 {
 	// 初期化。基本 0。
@@ -23,13 +16,13 @@ COptimizeEditBoxApp::COptimizeEditBoxApp()
 	m_timerId = 0;
 	m_wParam = 0;
 	m_lParam = 0;
-	m_doDefault = false;
 
 	m_optimizeTimeLine = FALSE;
 	m_editBoxDelay = 0;
 	m_trackBarDelay = 0;
 
 	m_hook = 0;
+	m_orig_exedit_wndProc = 0;
 }
 
 COptimizeEditBoxApp::~COptimizeEditBoxApp()
@@ -44,6 +37,7 @@ BOOL COptimizeEditBoxApp::dllMain(HINSTANCE instance, DWORD reason, LPVOID reser
 		{
 			MY_TRACE(_T("DLL_PROCESS_ATTACH\n"));
 
+			// DLL インスタントハンドルを m_instance に格納する。
 			m_instance = instance;
 
 			MY_TRACE_HEX(m_instance);
@@ -97,15 +91,27 @@ BOOL COptimizeEditBoxApp::proc(FILTER *fp, FILTER_PROC_INFO *fpip)
 {
 	MY_TRACE(_T("COptimizeEditBoxApp::proc()\n"));
 
-	// 念のためフレーム画像が更新されたタイミングでタイマーを止める。
+	return FALSE;
+}
+
+BOOL COptimizeEditBoxApp::exedit_proc(FILTER *fp, FILTER_PROC_INFO *fpip)
+{
+	MY_TRACE(_T("COptimizeEditBoxApp::exedit_proc()\n"));
+
+	// ここで exedit のフィルタ関数の直前のタイミングで処理を行う。
+	// exedit のフィルタ関数の直後だともう一度描画しなければならず、描画処理が 1 つ増えてしまう。
+
+	// フレーム画像を更新する必要があるので
+	// タイマーを止めて exedit のテキストオブジェクトにデフォルト処理を実行させる。
+	// これによって exedit のフレーム画像更新の準備が整う。
 	stopTimer();
 
 	return TRUE;
 }
 
-LRESULT COptimizeEditBoxApp::exedit_wndProc(WNDPROC orig, HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT COptimizeEditBoxApp::hook_exedit_wndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	MY_TRACE(_T("0x%08X, 0x%08X, 0x%08X)\n"), message, wParam, lParam);
+//	MY_TRACE(_T("0x%08X, 0x%08X, 0x%08X)\n"), message, wParam, lParam);
 
 	// WM_COMMAND メッセージが来たかチェックする。
 	if (message == WM_COMMAND)
@@ -135,75 +141,27 @@ LRESULT COptimizeEditBoxApp::exedit_wndProc(WNDPROC orig, HWND hwnd, UINT messag
 		{
 			MY_TRACE(_T("WM_COMMAND, code == EN_CHANGE && id >= 0x5600, 0x%04X, 0x%04X, 0x%08X)\n"), code, id, sender);
 
+			// エディットボックスの処理を遅延させるかチェックする。
 			if (m_editBoxDelay > 0)
 			{
-				// デフォルト処理を行うフラグが立っている場合はフラグを消すだけで何もしない。
-				if (m_doDefault)
-				{
-					MY_TRACE(_T("先送りしていたエディットボックスメッセージをデフォルト処理に送ります\n"));
-					m_doDefault = false;
-				}
-				else
-				{
-					MY_TRACE(_T("タイマーを使ってエディットボックスメッセージの処理を先送りにします\n"));
-					startTimer(wParam, lParam, m_editBoxDelay);
-					return 0;
-				}
+				MY_TRACE(_T("タイマーを使ってエディットボックスメッセージの処理を先送りにします\n"));
+				startTimer(wParam, lParam, m_editBoxDelay);
+				return 0;
 			}
 		}
 	}
 
-	return ::CallWindowProc(orig, hwnd, message, wParam, lParam);
+	return ::CallWindowProc(m_orig_exedit_wndProc, hwnd, message, wParam, lParam);
 }
 
-void COptimizeEditBoxApp::timerProc(HWND hwnd, UINT message, UINT_PTR id, DWORD time)
+LRESULT CALLBACK COptimizeEditBoxApp::_hook_exedit_wndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	MY_TRACE(_T("COptimizeEditBoxApp::timerProc(0x%08X, 0x%08X)\n"), id, time);
-
-	if (id == m_timerId)
-	{
-		// このタイマーを止める。
-		stopTimer();
-
-		// 先送りしていたメッセージのデフォルト処理を促す。
-		m_doDefault = true;
-
-		WPARAM wParam = m_wParam;
-		LPARAM lParam = m_lParam;
-
-		MY_TRACE(_T("::PostMessage(WM_COMMAND, 0x%08X, 0x%08X)\n"), wParam, lParam);
-		::PostMessage(m_exeditWindow, WM_COMMAND, wParam, lParam);
-	}
+	return theApp.hook_exedit_wndProc(hwnd, message, wParam, lParam);
 }
 
-LRESULT COptimizeEditBoxApp::cbtProc(int code, WPARAM wParam, LPARAM lParam)
+void COptimizeEditBoxApp::startTimer(WPARAM wParam, LPARAM lParam, int elapse)
 {
-	if (code >= 0)
-	{
-		if (code == HCBT_CREATEWND)
-		{
-			CBT_CREATEWND* cw = (CBT_CREATEWND*)lParam;
-
-			if ((DWORD)cw->lpcs->lpszClass > 0xFFFF &&
-				::lstrcmpi(cw->lpcs->lpszClass, _T("ExtendedFilterClass")) == 0)
-			{
-				// exedit のオブジェクト編集ダイアログをサブクラス化する。
-				m_exeditWindow = (HWND)wParam;
-				orig_exedit_wndProc = SubclassWindow(m_exeditWindow, hook_exedit_wndProc);
-				MY_TRACE_HEX(orig_exedit_wndProc);
-
-				// フックはこれで終わり。
-				unhook();
-			}
-		}
-	}
-
-	return ::CallNextHookEx(m_hook, code, wParam, lParam);
-}
-
-void COptimizeEditBoxApp::startTimer(WPARAM wParam, LPARAM lParam, int delay)
-{
-	MY_TRACE(_T("COptimizeEditBoxApp::startTimer(0x%08X, 0x%08X, %d)\n"), wParam, lParam, delay);
+	MY_TRACE(_T("COptimizeEditBoxApp::startTimer(0x%08X, 0x%08X, %d)\n"), wParam, lParam, elapse);
 
 	if (m_timerId)
 	{
@@ -214,9 +172,11 @@ void COptimizeEditBoxApp::startTimer(WPARAM wParam, LPARAM lParam, int delay)
 		::KillTimer(0, m_timerId), m_timerId = 0;
 	}
 
+	// タイマー停止時に実行するコマンド用の変数をメンバ変数に格納しておく。
 	m_wParam = wParam;
 	m_lParam = lParam;
-	m_timerId = ::SetTimer(0, 0, delay, _timerProc);
+	// スレッドタイマーをセットする。
+	m_timerId = ::SetTimer(0, 0, elapse, _timerProc);
 	MY_TRACE_HEX(m_wParam);
 	MY_TRACE_HEX(m_lParam);
 	MY_TRACE_HEX(m_timerId);
@@ -230,6 +190,21 @@ void COptimizeEditBoxApp::stopTimer()
 	{
 		// タイマーを削除する。
 		::KillTimer(0, m_timerId), m_timerId = 0;
+
+		// 先送りしていたメッセージのデフォルト処理を実行する。
+		MY_TRACE(_T("デフォルト処理を実行します : WM_COMMAND, 0x%08X, 0x%08X)\n"), m_wParam, m_lParam);
+		::CallWindowProc(m_orig_exedit_wndProc, m_exeditWindow, WM_COMMAND, m_wParam, m_lParam);
+	}
+}
+
+void COptimizeEditBoxApp::timerProc(HWND hwnd, UINT message, UINT_PTR id, DWORD time)
+{
+	MY_TRACE(_T("COptimizeEditBoxApp::timerProc(0x%08X, 0x%08X)\n"), id, time);
+
+	if (id == m_timerId)
+	{
+		// このタイマーを止めてデフォルト処理を実行する。
+		stopTimer();
 	}
 }
 
@@ -252,6 +227,32 @@ void COptimizeEditBoxApp::unhook()
 
 	// CBT フックを削除する。
 	::UnhookWindowsHookEx(m_hook), m_hook = 0;
+}
+
+LRESULT COptimizeEditBoxApp::cbtProc(int code, WPARAM wParam, LPARAM lParam)
+{
+	if (code >= 0)
+	{
+		if (code == HCBT_CREATEWND)
+		{
+			CBT_CREATEWND* cw = (CBT_CREATEWND*)lParam;
+
+			// ウィンドウクラス名をチェックする。
+			if ((DWORD)cw->lpcs->lpszClass > 0xFFFF &&
+				::lstrcmpi(cw->lpcs->lpszClass, _T("ExtendedFilterClass")) == 0)
+			{
+				// exedit のオブジェクト編集ダイアログをサブクラス化する。
+				m_exeditWindow = (HWND)wParam;
+				m_orig_exedit_wndProc = SubclassWindow(m_exeditWindow, _hook_exedit_wndProc);
+				MY_TRACE_HEX(m_orig_exedit_wndProc);
+
+				// フックはこれで終わり。
+				unhook();
+			}
+		}
+	}
+
+	return ::CallNextHookEx(m_hook, code, wParam, lParam);
 }
 
 LRESULT CALLBACK COptimizeEditBoxApp::_cbtProc(int code, WPARAM wParam, LPARAM lParam)
