@@ -95,7 +95,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../;../AviUtl/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../AviUtl/</AdditionalIncludeDirectories>
       <StructMemberAlignment>Default</StructMemberAlignment>
     </ClCompile>
     <Link>
@@ -119,7 +119,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../;../AviUtl/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../AviUtl/</AdditionalIncludeDirectories>
       <StructMemberAlignment>Default</StructMemberAlignment>
     </ClCompile>
     <Link>
@@ -143,7 +143,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../;../AviUtl/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../AviUtl/</AdditionalIncludeDirectories>
       <StructMemberAlignment>Default</StructMemberAlignment>
     </ClCompile>
     <Link>
@@ -167,7 +167,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../;../AviUtl/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../AviUtl/</AdditionalIncludeDirectories>
       <StructMemberAlignment>Default</StructMemberAlignment>
     </ClCompile>
     <Link>
@@ -184,6 +184,11 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\AviUtl\aulslib\aviutl.h" />
+    <ClInclude Include="..\AviUtl\aulslib\exedit.h" />
+    <ClInclude Include="..\AviUtl\aulslib\lua.h" />
+    <ClInclude Include="..\AviUtl\aulslib\memref.h" />
+    <ClInclude Include="..\AviUtl\aulslib\memref2.h" />
     <ClInclude Include="..\Common\MyTracer.h" />
     <ClInclude Include="OptimizeEditBox.h" />
     <ClInclude Include="pch.h" />

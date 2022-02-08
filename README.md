@@ -1,8 +1,11 @@
 # AviUtl プラグイン - エディットボックス最適化
 
+* version 3.0.0 by 蛇色 - 2022/02/08 グラデーションを綺麗にする機能などを追加
 * version 2.1.1 by 蛇色 - 2022/01/08 スピンボタンによる編集が無効になる問題を修正
 
-拡張編集の冗長なフレームの更新処理を抑制します。
+拡張編集の冗長なフレーム更新処理を抑制します。
+
+![綺麗にグラデーション](https://user-images.githubusercontent.com/96464759/152974130-bcda58c8-fdab-43fa-96fa-bfbe091975f2.png)
 
 ## (1) テキストオブジェクトがやたら重いと感じている人向け
 現在の拡張編集ではタイムライン上でテキストオブジェクトを左クリックダウンした時点でフレームの更新処理が最低でも2回発生します。これは本来必要のない処理です。さらに左クリックアップ時に1回フレームの更新が行われます。  
@@ -18,15 +21,25 @@
 設定ファイルで指定した遅延時間内に次の文字を入力すると再計算が省略されて遅延時間が延長されます。  
 最後の入力が終わってから遅延時間が経過した時点でフレームの再計算が始まります。  
 
-## インストール
+## (3) IME で UNICODE 文字を入力したい人向け
+```usesUnicodeInput``` を ON にすると、IME の日本語入力で UNICODE 文字を入力できるようになります。ただし、サロゲートペアには未対応です。
+
+## (4) オブジェクト設定ダイアログの切り替え
+```usesSetRedraw``` を ON にすると、オブジェクト設定ダイアログの切替時にコントロールの更新処理を最適化します。※eclipse_fast.auf と似たような機能です。
+
+## (5) タイムラインの描画がおかしいと感じる人向け
+高 DPI の設定をしているとタイムラインのグラデーション描画が特におかしくなります。
+```usesGradientFill``` を ON にすると、OS の API でグラデーションを描画するようになります。※eclipse_fast.auf と似たような機能です。
+
+## 導入方法
 
 以下のファイルを AviUtl の Plugins フォルダに入れてください。
 * OptimizeEditBox.auf
 * OptimizeEditBox.ini
 
-## 設定
+## 設定方法
 
-OptimizeEditBox.ini をテキストエディタで編集します。
+OptimizeEditBox.ini をテキストエディタで編集してから AviUtl を起動します。
 
 ```ini
 [Settings]
@@ -36,11 +49,13 @@ editBoxDelay=0
 ; エディットボックスの再計算遅延時間をミリ秒で指定します。
 ; 例えば 1 秒遅延させたい場合は 1000 を指定します。
 ; 遅延させたくない場合は 0 を指定します。
+usesUnicodeInput=0 ; テキストオブジェクトで UNICODE 文字を入力したい場合は 1 を指定します。
+usesSetRedraw=0 ; オブジェクト設定ダイアログの最適化を行う場合は 1 を指定します。
+usesGradientFill=0 ; グラデーション描画を変更する場合は 1 を指定します。
 ```
 
 ## 動作確認
 
 * (必須) AviUtl 1.10 & 拡張編集 0.92 http://spring-fragrance.mints.ne.jp/aviutl/
-* (共存確認) patch.aul r9 https://www.nicovideo.jp/watch/sm39491708
-* (共存確認) eclipse_fast 1.00 https://www.nicovideo.jp/watch/sm39756003
-* (共存確認) 爆速プラグイン 1.06 https://www.nicovideo.jp/watch/sm39679253
+* (共存確認) patch.aul r10 https://www.nicovideo.jp/watch/sm39491708
+* (一部競合) eclipse_fast 1.00 https://www.nicovideo.jp/watch/sm39756003

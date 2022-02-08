@@ -20,8 +20,8 @@ BOOL hook_exedit_func_proc(void *fp, FILTER_PROC_INFO *fpip)
 //---------------------------------------------------------------------
 EXTERN_C FILTER_DLL __declspec(dllexport) * __stdcall GetFilterTable(void)
 {
-	static TCHAR g_filterName[] = TEXT("エディットボックス最適化");
-	static TCHAR g_filterInformation[] = TEXT("エディットボックス最適化 version 2.1.0 by 蛇色");
+	static TCHAR filterName[] = TEXT("エディットボックス最適化");
+	static TCHAR filterInformation[] = TEXT("エディットボックス最適化 version 3.0.0 by 蛇色");
 
 	static FILTER_DLL filter =
 	{
@@ -30,11 +30,11 @@ EXTERN_C FILTER_DLL __declspec(dllexport) * __stdcall GetFilterTable(void)
 		FILTER_FLAG_DISP_FILTER |
 		FILTER_FLAG_EX_INFORMATION,
 		0, 0,
-		g_filterName,
+		filterName,
 		NULL, NULL, NULL,
 		NULL, NULL,
 		NULL, NULL, NULL,
-		func_proc,
+		NULL,//func_proc,
 		func_init,
 		func_exit,
 		NULL,
@@ -42,7 +42,7 @@ EXTERN_C FILTER_DLL __declspec(dllexport) * __stdcall GetFilterTable(void)
 		NULL, NULL,
 		NULL,
 		NULL,
-		g_filterInformation,
+		filterInformation,
 		NULL, NULL,
 		NULL, NULL, NULL, NULL,
 		NULL,
@@ -59,9 +59,7 @@ BOOL func_init(FILTER *fp)
 {
 	// exedit フィルタ関数をフックする。
 	FILTER* exedit = auls::Exedit_GetFilter(fp);
-
 	MY_TRACE_HEX(exedit);
-
 	if (exedit)
 	{
 		true_exedit_func_proc = exedit->func_proc;
@@ -94,3 +92,5 @@ BOOL APIENTRY DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
 {
 	return theApp.dllMain(instance, reason, reserved);
 }
+
+//---------------------------------------------------------------------

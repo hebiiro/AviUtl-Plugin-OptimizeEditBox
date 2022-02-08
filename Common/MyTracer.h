@@ -8,10 +8,12 @@
 #define MY_TRACE_BINARY		(void)sizeof
 #endif
 
-#define MY_TRACE_STR(xxx)	MY_TRACE(_T(#xxx) _T(" = %s\n"), xxx)
+#define MY_TRACE_STR(xxx)	MY_TRACE(_T(#xxx) _T(" = %hs\n"), xxx)
 #define MY_TRACE_WSTR(xxx)	MY_TRACE(_T(#xxx) _T(" = %ws\n"), xxx)
-#define MY_TRACE_NUM(xxx)	MY_TRACE(_T(#xxx) _T(" = %d\n"), xxx)
+#define MY_TRACE_TSTR(xxx)	MY_TRACE(_T(#xxx) _T(" = %s\n"), xxx)
+#define MY_TRACE_INT(xxx)	MY_TRACE(_T(#xxx) _T(" = %d\n"), xxx)
 #define MY_TRACE_HEX(xxx)	MY_TRACE(_T(#xxx) _T(" = 0x%08X\n"), xxx)
+#define MY_TRACE_REAL(xxx)	MY_TRACE(_T(#xxx) _T(" = %f\n"), xxx)
 #define MY_TRACE_RECT(xxx)	MY_TRACE(_T(#xxx) _T(" = %d, %d, %d, %d\n"), (xxx).left, (xxx).top, (xxx).right, (xxx).bottom)
 #define MY_TRACE_POINT(xxx)	MY_TRACE(_T(#xxx) _T(" = %d, %d\n"), (xxx).x, (xxx).y)
 #define MY_TRACE_SIZE(xxx)	MY_TRACE(_T(#xxx) _T(" = %d, %d\n"), (xxx).cx, (xxx).cy)
@@ -84,8 +86,6 @@ public:
 		{
 			::StringCbCopy(output, sizeof(output), text);
 		}
-
-		::OutputDebugString(output);
 
 		extern void ___outputLog(LPCTSTR text, LPCTSTR output);
 
