@@ -60,22 +60,78 @@ IMPLEMENT_HOOK_PROC(BOOL, WINAPI, PeekMessageA, (LPMSG msg, HWND hwnd, UINT msgF
 //	return true_PeekMessageA(msg, hwnd, msgFilterMin, msgFilterMax, removeMsg);
 }
 
+class ClassNameAsString
+{
+private:
+	char* m_buffer;
+public:
+	ClassNameAsString(LPCTSTR text)
+	{
+		m_buffer = new char[MAX_PATH];
+		if ((DWORD)text > 0x0000FFFFUL)
+			::StringCchCopyA(m_buffer, MAX_PATH, text);
+		else
+			::StringCchPrintfA(m_buffer, MAX_PATH, "0x%04X(ATOM)", (DWORD)text);
+	}
+	~ClassNameAsString()
+	{
+		delete[] m_buffer;
+	}
+	operator LPCSTR() const
+	{
+		return m_buffer;
+	}
+};
+
+class ClassNameBSTR
+{
+private:
+	DWORD m_orig;
+	_bstr_t m_bstr;
+public:
+	ClassNameBSTR(LPCTSTR text)
+		: m_orig((DWORD)text)
+	{
+		if (m_orig > 0x0000FFFF)
+			m_bstr = (LPCSTR)m_orig;
+	}
+	operator LPCSTR() const
+	{
+		if (m_orig > 0x0000FFFF)
+			return m_bstr;
+		else
+			return (LPCSTR)m_orig;
+	}
+	operator LPCWSTR() const
+	{
+		if (m_orig > 0x0000FFFF)
+			return m_bstr;
+		else
+			return (LPCWSTR)m_orig;
+	}
+};
+
 IMPLEMENT_HOOK_PROC(HWND, WINAPI, CreateWindowExA, (DWORD exStyle, LPCSTR className, LPCSTR windowName,
 	DWORD style, int x, int y, int w, int h, HWND parent, HMENU menu, HINSTANCE instance, LPVOID param))
 {
-//	MY_TRACE(_T("CreateWindowExA(%s, %s)\n"), className, windowName);
-/*
-	if (::lstrcmpiA(className, WC_EDITA) == 0)
+	ClassNameAsString classNameAsString(className);
+	ClassNameBSTR classNameBSTR(className);
+
+	MY_TRACE(_T("CreateWindowExA(%s, %s)\n"), classNameAsString, windowName);
+#if 0
+	if (::lstrcmpiA(classNameAsString, WC_EDITA) == 0)
 	{
 		MY_TRACE(_T("エディットボックスを UNICODE で作成します\n"));
 
-		return ::CreateWindowExW(exStyle, (_bstr_t)className, (_bstr_t)windowName, style, x, y, w, h, parent, menu, instance, param);
+		return ::CreateWindowExW(exStyle, classNameBSTR, (_bstr_t)windowName, style, x, y, w, h, parent, menu, instance, param);
 	}
-*/
-//	HWND result = ::CreateWindowExW(exStyle, (_bstr_t)className, (_bstr_t)windowName, style, x, y, w, h, parent, menu, instance, param);
+#endif
+#if 0
+	HWND result = ::CreateWindowExW(exStyle, classNameBSTR, (_bstr_t)windowName, style, x, y, w, h, parent, menu, instance, param);
+#else
 	HWND result = true_CreateWindowExA(exStyle, className, windowName, style, x, y, w, h, parent, menu, instance, param);
-
-	if (::lstrcmpiA(className, "ExtendedFilterClass") == 0)
+#endif
+	if (::lstrcmpiA(classNameAsString, "ExtendedFilterClass") == 0)
 	{
 		MY_TRACE(_T("拡張編集をフックします\n"));
 
@@ -164,7 +220,7 @@ BOOL TwoColorsGradient(
 		fHorizontal ? GRADIENT_FILL_RECT_H : GRADIENT_FILL_RECT_V);
 }
 
-void frameRect(HDC dc, LPCRECT rc, COLORREF color, int edgeWidth)
+void frameRect(HDC dc, LPCRECT rc, COLORREF color, int edgeWidth, int edgeHeight)
 {
 	int x = rc->left;
 	int y = rc->top;
@@ -173,10 +229,16 @@ void frameRect(HDC dc, LPCRECT rc, COLORREF color, int edgeWidth)
 
 	HBRUSH brush = ::CreateSolidBrush(color);
 	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
-	::PatBlt(dc, x, y, w, edgeWidth, PATCOPY);
-	::PatBlt(dc, x, y + h, w, -edgeWidth, PATCOPY);
-	::PatBlt(dc, x, y, edgeWidth, h, PATCOPY);
-	::PatBlt(dc, x + w, y, -edgeWidth, h, PATCOPY);
+	if (edgeHeight > 0)
+	{
+		::PatBlt(dc, x, y, w, edgeHeight, PATCOPY);
+		::PatBlt(dc, x, y + h, w, -edgeHeight, PATCOPY);
+	}
+	if (edgeWidth > 0)
+	{
+		::PatBlt(dc, x, y, edgeWidth, h, PATCOPY);
+		::PatBlt(dc, x + w, y, -edgeWidth, h, PATCOPY);
+	}
 	::SelectObject(dc, oldBrush);
 	::DeleteObject(brush);
 }
@@ -215,9 +277,9 @@ IMPLEMENT_HOOK_PROC_NULL(void, CDECL, Exedit_FillGradation, (HDC dc, const RECT 
 #if 1
 	// 枠も描画するならここを使う。
 	RECT rcFrame = *rc;
-	frameRect(dc, &rcFrame, RGB(0x00, 0x00, 0x00), 1);
-	::InflateRect(&rcFrame, -1, -1);
-	frameRect(dc, &rcFrame, RGB(0xff, 0xff, 0xff), 1);
+	frameRect(dc, &rcFrame, theApp.m_outerColor, theApp.m_outerEdgeWidth, theApp.m_outerEdgeHeight);
+	::InflateRect(&rcFrame, -theApp.m_outerEdgeWidth, -theApp.m_outerEdgeHeight);
+	frameRect(dc, &rcFrame, theApp.m_innerColor, theApp.m_innerEdgeWidth, theApp.m_innerEdgeHeight);
 #endif
 }
 
@@ -252,6 +314,14 @@ COptimizeEditBoxApp::COptimizeEditBoxApp()
 	m_usesUnicodeInput = FALSE;
 	m_usesSetRedraw = FALSE;
 	m_usesGradientFill = FALSE;
+
+	m_innerColor = RGB(0xff, 0xff, 0xff);
+	m_innerEdgeWidth = 1;
+	m_innerEdgeHeight = 1;
+
+	m_outerColor = RGB(0x00, 0x00, 0x00);
+	m_outerEdgeWidth = 1;
+	m_outerEdgeHeight = 1;
 }
 
 COptimizeEditBoxApp::~COptimizeEditBoxApp()
@@ -374,6 +444,11 @@ BOOL COptimizeEditBoxApp::dllMain(HINSTANCE instance, DWORD reason, LPVOID reser
 			m_instance = instance;
 			MY_TRACE_HEX(m_instance);
 
+			// この DLL の参照カウンタを増やしておく。
+			WCHAR moduleFileName[MAX_PATH] = {};
+			::GetModuleFileNameW(m_instance, moduleFileName, MAX_PATH);
+			::LoadLibraryW(moduleFileName);
+
 			break;
 		}
 	case DLL_PROCESS_DETACH:
@@ -414,6 +489,20 @@ BOOL COptimizeEditBoxApp::init(FILTER *fp)
 	MY_TRACE_INT(m_usesUnicodeInput);
 	MY_TRACE_INT(m_usesSetRedraw);
 	MY_TRACE_INT(m_usesGradientFill);
+
+	BYTE innerColorR = (BYTE)::GetPrivateProfileInt(_T("Settings"), _T("innerColorR"), GetRValue(m_innerColor), path);
+	BYTE innerColorG = (BYTE)::GetPrivateProfileInt(_T("Settings"), _T("innerColorG"), GetGValue(m_innerColor), path);
+	BYTE innerColorB = (BYTE)::GetPrivateProfileInt(_T("Settings"), _T("innerColorB"), GetBValue(m_innerColor), path);
+	m_innerColor = RGB(innerColorR, innerColorG, innerColorB);
+	m_innerEdgeWidth = ::GetPrivateProfileInt(_T("Settings"), _T("innerEdgeWidth"), m_innerEdgeWidth, path);
+	m_innerEdgeHeight = ::GetPrivateProfileInt(_T("Settings"), _T("innerEdgeHeight"), m_innerEdgeHeight, path);
+
+	BYTE outerColorR = (BYTE)::GetPrivateProfileInt(_T("Settings"), _T("outerColorR"), GetRValue(m_outerColor), path);
+	BYTE outerColorG = (BYTE)::GetPrivateProfileInt(_T("Settings"), _T("outerColorG"), GetGValue(m_outerColor), path);
+	BYTE outerColorB = (BYTE)::GetPrivateProfileInt(_T("Settings"), _T("outerColorB"), GetBValue(m_outerColor), path);
+	m_outerColor = RGB(outerColorR, outerColorG, outerColorB);
+	m_outerEdgeWidth = ::GetPrivateProfileInt(_T("Settings"), _T("outerEdgeWidth"), m_outerEdgeWidth, path);
+	m_outerEdgeHeight = ::GetPrivateProfileInt(_T("Settings"), _T("outerEdgeHeight"), m_outerEdgeHeight, path);
 
 	initHook();
 

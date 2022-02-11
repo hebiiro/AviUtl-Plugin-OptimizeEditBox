@@ -1,5 +1,6 @@
 # AviUtl プラグイン - エディットボックス最適化
 
+* version 4.0.0 by 蛇色 - 2022/02/11 枠線描画の調整機能を追加
 * version 3.0.0 by 蛇色 - 2022/02/08 グラデーションを綺麗にする機能などを追加
 * version 2.1.1 by 蛇色 - 2022/01/08 スピンボタンによる編集が無効になる問題を修正
 
@@ -52,10 +53,20 @@ editBoxDelay=0
 usesUnicodeInput=0 ; テキストオブジェクトで UNICODE 文字を入力したい場合は 1 を指定します。
 usesSetRedraw=0 ; オブジェクト設定ダイアログの最適化を行う場合は 1 を指定します。
 usesGradientFill=0 ; グラデーション描画を変更する場合は 1 を指定します。
+innerColorR=0xff ; 内側の枠の色。
+innerColorG=0xff ; 内側の枠の色。
+innerColorB=0xff ; 内側の枠の色。
+innerEdgeWidth=1 ; 内側の枠の横幅。0以下なら枠の左右は描画しない。
+innerEdgeHeight=1 ; 内側の枠の縦幅。0以下なら枠の上下は描画しない。
+outerColorR=0x00 ; 外側の枠の色。指定の仕方は内側の枠と同じ。
+outerColorG=0x00
+outerColorB=0x00
+outerEdgeWidth=1
+outerEdgeHeight=1
 ```
 
 ## 動作確認
 
 * (必須) AviUtl 1.10 & 拡張編集 0.92 http://spring-fragrance.mints.ne.jp/aviutl/
-* (共存確認) patch.aul r10 https://www.nicovideo.jp/watch/sm39491708
+* (共存確認) patch.aul r11 https://www.nicovideo.jp/watch/sm39491708
 * (一部競合) eclipse_fast 1.00 https://www.nicovideo.jp/watch/sm39756003

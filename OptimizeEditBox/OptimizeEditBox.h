@@ -60,6 +60,14 @@ public:
 	BOOL m_usesSetRedraw;
 	BOOL m_usesGradientFill;
 
+	COLORREF m_innerColor;
+	int m_innerEdgeWidth;
+	int m_innerEdgeHeight;
+
+	COLORREF m_outerColor;
+	int m_outerEdgeWidth;
+	int m_outerEdgeHeight;
+
 public:
 
 	COptimizeEditBoxApp();
