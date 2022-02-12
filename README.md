@@ -1,5 +1,6 @@
 # AviUtl プラグイン - エディットボックス最適化
 
+* version 5.0.0 by 蛇色 - 2022/02/12 選択領域外の色などを調整する機能を追加
 * version 4.0.0 by 蛇色 - 2022/02/11 枠線描画の調整機能を追加
 * version 3.0.0 by 蛇色 - 2022/02/08 グラデーションを綺麗にする機能などを追加
 * version 2.1.1 by 蛇色 - 2022/01/08 スピンボタンによる編集が無効になる問題を修正
@@ -63,6 +64,13 @@ outerColorG=0x00
 outerColorB=0x00
 outerEdgeWidth=1
 outerEdgeHeight=1
+selectionColor=-1 ; 選択領域の色。色は 0x00bbggrr の形式で指定する。-1 の場合は指定なし。
+selectionEdgeColor=-1 ; 選択領域端の色。
+selectionBkColor=-1 ; 選択領域外の色。
+layerBorderLeftColor=-1 ; レイヤー間ボーダーの左側の色。
+layerBorderRightColor=-1 ; レイヤー間ボーダーの右側の色。
+layerBorderTopColor=-1 ; レイヤー間ボーダーの上側の色。
+layerBorderBottomColor=-1 ; レイヤー間ボーダーの下側の色。
 ```
 
 ## 動作確認

@@ -288,6 +288,76 @@ IMPLEMENT_HOOK_PROC_NULL(LRESULT, WINAPI, Exedit_ObjectDialog_WndProc, (HWND hwn
 	return theApp.hook_exedit_wndProc(hwnd, message, wParam, lParam);
 }
 
+COLORREF* g_selectionColor = 0;
+COLORREF* g_selectionEdgeColor = 0;
+COLORREF* g_selectionBkColor = 0;
+
+// CALL を書き換える
+template<class T>
+void hookCall(DWORD address, T hookProc)
+{
+	BYTE code[5];
+	code[0] = 0xE8; // CALL
+	*(DWORD*)&code[1] = (DWORD)hookProc - (address + 5);
+
+	// CALL を書き換える。そのあと命令キャッシュをフラッシュする。
+	::WriteProcessMemory(::GetCurrentProcess(), (LPVOID)address, code, sizeof(code), NULL);
+	::FlushInstructionCache(::GetCurrentProcess(), (LPVOID)address, sizeof(code));
+}
+
+// 絶対アドレスを書き換える
+template<class T>
+void writeAbsoluteAddress(DWORD address, const T* x)
+{
+	// 絶対アドレスを書き換える。そのあと命令キャッシュをフラッシュする。
+	::WriteProcessMemory(::GetCurrentProcess(), (LPVOID)address, &x, sizeof(x), NULL);
+	::FlushInstructionCache(::GetCurrentProcess(), (LPVOID)address, sizeof(x));
+}
+
+void drawLineLeft(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
+{
+	MY_TRACE(_T("drawLineLeft(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
+
+	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerBorderLeftColor);
+	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
+	::PatBlt(dc, mx, my, 1, ly - my, PATCOPY);
+	::SelectObject(dc, oldBrush);
+	::DeleteObject(brush);
+}
+
+void drawLineRight(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
+{
+	MY_TRACE(_T("drawLineRight(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
+
+	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerBorderRightColor);
+	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
+	::PatBlt(dc, mx, my, 1, ly - my, PATCOPY);
+	::SelectObject(dc, oldBrush);
+	::DeleteObject(brush);
+}
+
+void drawLineTop(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
+{
+	MY_TRACE(_T("drawLineTop(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
+
+	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerBorderTopColor);
+	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
+	::PatBlt(dc, mx, my, lx - mx, 1, PATCOPY);
+	::SelectObject(dc, oldBrush);
+	::DeleteObject(brush);
+}
+
+void drawLineBottom(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
+{
+	MY_TRACE(_T("drawLineBottom(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
+
+	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerBorderBottomColor);
+	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
+	::PatBlt(dc, mx, my, lx - mx, 1, PATCOPY);
+	::SelectObject(dc, oldBrush);
+	::DeleteObject(brush);
+}
+
 //---------------------------------------------------------------------
 
 COptimizeEditBoxApp theApp;
@@ -322,6 +392,15 @@ COptimizeEditBoxApp::COptimizeEditBoxApp()
 	m_outerColor = RGB(0x00, 0x00, 0x00);
 	m_outerEdgeWidth = 1;
 	m_outerEdgeHeight = 1;
+
+	m_selectionColor = CLR_NONE;
+	m_selectionEdgeColor = CLR_NONE;
+	m_selectionBkColor = CLR_NONE;
+
+	m_layerBorderLeftColor = RGB(0x99, 0x99, 0x99);
+	m_layerBorderRightColor = RGB(0x99, 0x99, 0x99);
+	m_layerBorderTopColor = RGB(0x99, 0x99, 0x99);
+	m_layerBorderBottomColor = RGB(0x99, 0x99, 0x99);
 }
 
 COptimizeEditBoxApp::~COptimizeEditBoxApp()
@@ -402,6 +481,23 @@ BOOL COptimizeEditBoxApp::initExeditHook(HWND hwnd)
 	true_Exedit_ShowControls = (Type_Exedit_ShowControls)((DWORD)exedit_auf + 0x000305E0);
 	true_Exedit_FillGradation = (Type_Exedit_FillGradation)((DWORD)exedit_auf + 0x00036a70);
 
+	if (m_layerBorderLeftColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x00038845, drawLineLeft);
+	if (m_layerBorderRightColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x000388AA, drawLineRight);
+	if (m_layerBorderTopColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x00038871, drawLineTop);
+	if (m_layerBorderBottomColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x000388DA, drawLineBottom);
+
+	if (m_selectionColor != CLR_NONE) writeAbsoluteAddress((DWORD)exedit_auf + 0x0003807E, &m_selectionColor);
+	if (m_selectionEdgeColor != CLR_NONE) writeAbsoluteAddress((DWORD)exedit_auf + 0x00038076, &m_selectionEdgeColor);
+	if (m_selectionBkColor != CLR_NONE) writeAbsoluteAddress((DWORD)exedit_auf + 0x00038087, &m_selectionBkColor);
+/*
+	g_selectionColor = (COLORREF*)((DWORD)exedit_auf + 0x00149658);
+	g_selectionEdgeColor = (COLORREF*)((DWORD)exedit_auf + 0x00153880);
+	g_selectionBkColor = (COLORREF*)((DWORD)exedit_auf + 0x001A51D0);
+
+	if (m_selectionColor != CLR_NONE) *g_selectionColor = m_selectionColor; // 選択領域の色
+	if (m_selectionEdgeColor != CLR_NONE) *g_selectionEdgeColor = m_selectionEdgeColor; // 選択領域端の色
+	if (m_selectionBkColor != CLR_NONE) *g_selectionBkColor = m_selectionBkColor; // 選択領域外の色
+*/
 	DetourTransactionBegin();
 	DetourUpdateThread(::GetCurrentThread());
 
@@ -503,6 +599,15 @@ BOOL COptimizeEditBoxApp::init(FILTER *fp)
 	m_outerColor = RGB(outerColorR, outerColorG, outerColorB);
 	m_outerEdgeWidth = ::GetPrivateProfileInt(_T("Settings"), _T("outerEdgeWidth"), m_outerEdgeWidth, path);
 	m_outerEdgeHeight = ::GetPrivateProfileInt(_T("Settings"), _T("outerEdgeHeight"), m_outerEdgeHeight, path);
+
+	m_selectionColor = ::GetPrivateProfileInt(_T("Settings"), _T("selectionColor"), m_selectionColor, path);
+	m_selectionEdgeColor = ::GetPrivateProfileInt(_T("Settings"), _T("selectionEdgeColor"), m_selectionEdgeColor, path);
+	m_selectionBkColor = ::GetPrivateProfileInt(_T("Settings"), _T("selectionBkColor"), m_selectionBkColor, path);
+
+	m_layerBorderLeftColor = ::GetPrivateProfileInt(_T("Settings"), _T("layerBorderLeftColor"), m_layerBorderLeftColor, path);
+	m_layerBorderRightColor = ::GetPrivateProfileInt(_T("Settings"), _T("layerBorderRightColor"), m_layerBorderRightColor, path);
+	m_layerBorderTopColor = ::GetPrivateProfileInt(_T("Settings"), _T("layerBorderTopColor"), m_layerBorderTopColor, path);
+	m_layerBorderBottomColor = ::GetPrivateProfileInt(_T("Settings"), _T("layerBorderBottomColor"), m_layerBorderBottomColor, path);
 
 	initHook();
 

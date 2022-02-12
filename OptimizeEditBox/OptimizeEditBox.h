@@ -40,6 +40,15 @@ DECLARE_HOOK_PROC(BOOL, CDECL, Exedit_ShowControls, (int objectIndex));
 DECLARE_HOOK_PROC(void, CDECL, Exedit_FillGradation, (HDC dc, const RECT *rc, BYTE r, BYTE g, BYTE b, BYTE gr, BYTE gg, BYTE gb, int gs, int ge));
 DECLARE_HOOK_PROC(LRESULT, WINAPI, Exedit_ObjectDialog_WndProc, (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam));
 
+extern COLORREF* g_selectionColor;
+extern COLORREF* g_selectionEdgeColor;
+extern COLORREF* g_selectionBkColor;
+
+void drawLineLeft(HDC dc, int mx, int my, int lx, int ly, HPEN pen);
+void drawLineRight(HDC dc, int mx, int my, int lx, int ly, HPEN pen);
+void drawLineTop(HDC dc, int mx, int my, int lx, int ly, HPEN pen);
+void drawLineBottom(HDC dc, int mx, int my, int lx, int ly, HPEN pen);
+
 //---------------------------------------------------------------------
 
 class COptimizeEditBoxApp
@@ -67,6 +76,15 @@ public:
 	COLORREF m_outerColor;
 	int m_outerEdgeWidth;
 	int m_outerEdgeHeight;
+
+	COLORREF m_selectionColor;
+	COLORREF m_selectionEdgeColor;
+	COLORREF m_selectionBkColor;
+
+	COLORREF m_layerBorderLeftColor;
+	COLORREF m_layerBorderRightColor;
+	COLORREF m_layerBorderTopColor;
+	COLORREF m_layerBorderBottomColor;
 
 public:
 

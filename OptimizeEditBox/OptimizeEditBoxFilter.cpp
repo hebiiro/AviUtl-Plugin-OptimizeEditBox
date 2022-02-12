@@ -21,7 +21,7 @@ BOOL hook_exedit_func_proc(void *fp, FILTER_PROC_INFO *fpip)
 EXTERN_C FILTER_DLL __declspec(dllexport) * __stdcall GetFilterTable(void)
 {
 	static TCHAR filterName[] = TEXT("エディットボックス最適化");
-	static TCHAR filterInformation[] = TEXT("エディットボックス最適化 version 4.0.0 by 蛇色");
+	static TCHAR filterInformation[] = TEXT("エディットボックス最適化 version 5.0.0 by 蛇色");
 
 	static FILTER_DLL filter =
 	{
