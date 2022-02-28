@@ -8,11 +8,11 @@
 #pragma comment(lib, "shlwapi.lib")
 #include <commctrl.h>
 #include <comdef.h>
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
 
 #include <tchar.h>
 #include <strsafe.h>
-
-#include <map>
 
 typedef const BYTE* LPCBYTE;
 #include "../AviUtl/aulslib/exedit.h"

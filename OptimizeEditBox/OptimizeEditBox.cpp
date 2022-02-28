@@ -1,362 +1,6 @@
 ﻿#include "pch.h"
 #include "OptimizeEditBox.h"
-
-//---------------------------------------------------------------------
-
-IMPLEMENT_HOOK_PROC(BOOL, WINAPI, GetMessageA, (LPMSG msg, HWND hwnd, UINT msgFilterMin, UINT msgFilterMax))
-{
-#if 1
-	BOOL result = ::GetMessageW(msg, hwnd, msgFilterMin, msgFilterMax);
-#else
-	BOOL result = true_GetMessageA(msg, hwnd, msgFilterMin, msgFilterMax);
-#endif
-#if 1
-	// 親ウィンドウを取得する。
-	HWND dlg = ::GetParent(msg->hwnd);
-	if (!dlg) return result;
-
-	// ウィンドウがエディットボックスか確認する。
-	TCHAR className[MAX_PATH] = {};
-	::GetClassName(msg->hwnd, className, MAX_PATH);
-//	MY_TRACE_TSTR(className);
-	if (::lstrcmpi(className, WC_EDIT) == 0)
-	{
-/*
-		// この処理を実行しても ESC キーでダイアログが非表示になってしまう。
-		if (msg->message == WM_KEYDOWN ||
-			msg->message == WM_KEYUP ||
-			msg->message == WM_CHAR ||
-			msg->message == WM_IME_KEYDOWN ||
-			msg->message == WM_IME_KEYUP ||
-			msg->message == WM_IME_CHAR)
-		{
-			if (msg->wParam == VK_ESCAPE ||
-				msg->wParam == VK_TAB ||
-				msg->wParam == VK_RETURN)
-			{
-				return result;
-			}
-		}
-*/
-		// ダイアログメッセージを処理する。
-		if (::IsDialogMessageW(dlg, msg))
-		{
-			// このメッセージはディスパッチしてはならないので WM_NULL に置き換える。
-			msg->hwnd = 0;
-			msg->message = WM_NULL;
-			msg->wParam = 0;
-			msg->lParam = 0;
-		}
-	}
-#endif
-	return result;
-}
-
-IMPLEMENT_HOOK_PROC(BOOL, WINAPI, PeekMessageA, (LPMSG msg, HWND hwnd, UINT msgFilterMin, UINT msgFilterMax, UINT removeMsg))
-{
-	MY_TRACE(_T("PeekMessageA()\n"));
-
-	return ::PeekMessageW(msg, hwnd, msgFilterMin, msgFilterMax, removeMsg);
-//	return true_PeekMessageA(msg, hwnd, msgFilterMin, msgFilterMax, removeMsg);
-}
-
-class ClassNameAsString
-{
-private:
-	char* m_buffer;
-public:
-	ClassNameAsString(LPCTSTR text)
-	{
-		m_buffer = new char[MAX_PATH];
-		if ((DWORD)text > 0x0000FFFFUL)
-			::StringCchCopyA(m_buffer, MAX_PATH, text);
-		else
-			::StringCchPrintfA(m_buffer, MAX_PATH, "0x%04X(ATOM)", (DWORD)text);
-	}
-	~ClassNameAsString()
-	{
-		delete[] m_buffer;
-	}
-	operator LPCSTR() const
-	{
-		return m_buffer;
-	}
-};
-
-class ClassNameBSTR
-{
-private:
-	DWORD m_orig;
-	_bstr_t m_bstr;
-public:
-	ClassNameBSTR(LPCTSTR text)
-		: m_orig((DWORD)text)
-	{
-		if (m_orig > 0x0000FFFF)
-			m_bstr = (LPCSTR)m_orig;
-	}
-	operator LPCSTR() const
-	{
-		if (m_orig > 0x0000FFFF)
-			return m_bstr;
-		else
-			return (LPCSTR)m_orig;
-	}
-	operator LPCWSTR() const
-	{
-		if (m_orig > 0x0000FFFF)
-			return m_bstr;
-		else
-			return (LPCWSTR)m_orig;
-	}
-};
-
-IMPLEMENT_HOOK_PROC(HWND, WINAPI, CreateWindowExA, (DWORD exStyle, LPCSTR className, LPCSTR windowName,
-	DWORD style, int x, int y, int w, int h, HWND parent, HMENU menu, HINSTANCE instance, LPVOID param))
-{
-	ClassNameAsString classNameAsString(className);
-	ClassNameBSTR classNameBSTR(className);
-
-	MY_TRACE(_T("CreateWindowExA(%s, %s)\n"), classNameAsString, windowName);
-#if 0
-	if (::lstrcmpiA(classNameAsString, WC_EDITA) == 0)
-	{
-		MY_TRACE(_T("エディットボックスを UNICODE で作成します\n"));
-
-		return ::CreateWindowExW(exStyle, classNameBSTR, (_bstr_t)windowName, style, x, y, w, h, parent, menu, instance, param);
-	}
-#endif
-#if 0
-	HWND result = ::CreateWindowExW(exStyle, classNameBSTR, (_bstr_t)windowName, style, x, y, w, h, parent, menu, instance, param);
-#else
-	HWND result = true_CreateWindowExA(exStyle, className, windowName, style, x, y, w, h, parent, menu, instance, param);
-#endif
-	if (::lstrcmpiA(classNameAsString, "ExtendedFilterClass") == 0)
-	{
-		MY_TRACE(_T("拡張編集をフックします\n"));
-
-		theApp.initExeditHook(result);
-	}
-
-	return result;
-}
-
-HWND getComboBox(HWND dialog)
-{
-	for (UINT i = 8200; i >= 8100; i--)
-	{
-		// ウィンドウハンドルを取得する。
-		HWND hwnd = ::GetDlgItem(dialog, i);
-
-		// コンボボックスかどうかクラス名で調べる。
-		TCHAR className[MAX_PATH] = {};
-		::GetClassName(hwnd, className, MAX_PATH);
-		if (::lstrcmpi(className, WC_COMBOBOX) != 0) continue;
-
-		if (::IsWindowVisible(hwnd)) // ウィンドウが可視なら
-		{
-			// ID - 2 のウィンドウを返す。
-			return ::GetDlgItem(dialog, i - 2);
-		}
-	}
-
-	return 0;
-}
-
-IMPLEMENT_HOOK_PROC_NULL(void, CDECL, Exedit_HideControls, ())
-{
-	MY_TRACE(_T("Exedit_HideControls()\n"));
-
-	true_Exedit_HideControls();
-}
-
-IMPLEMENT_HOOK_PROC_NULL(BOOL, CDECL, Exedit_ShowControls, (int objectIndex))
-{
-	MY_TRACE(_T("Exedit_ShowControls(%d)\n"), objectIndex);
-
-	// ダイアログのハンドルを取得する。
-	HWND dialog = theApp.m_exeditObjectDialog;
-
-	// 描画をロックしてからデフォルト処理を行う。
-	::SendMessage(dialog, WM_SETREDRAW, FALSE, 0);
-	BOOL result = true_Exedit_ShowControls(objectIndex);
-	::SendMessage(dialog, WM_SETREDRAW, TRUE, 0);
-
-	// 「アニメーション効果」のコンボボックスにメッセージを送信する。
-	HWND combobox = getComboBox(dialog);
-	MY_TRACE_HEX(combobox);
-	::SendMessage(dialog, WM_CTLCOLOREDIT, 0, (LPARAM)combobox);
-
-	return result;
-}
-
-// http://iooiau.net/tips/web20back.html
-// 2色のグラデーションを描画する関数です
-BOOL TwoColorsGradient(
-	HDC hdc,            // 描画先のデバイスコンテキスト・ハンドルです
-	const RECT *pRect,  // 描画する範囲の矩形です
-	COLORREF Color1,    // 描画する一つ目の色です
-	COLORREF Color2,    // 描画する二つ目の色です
-	BOOL fHorizontal    // 水平のグラデーションを描画する場合は TRUE にします
-)
-{
-	TRIVERTEX vert[2];
-	GRADIENT_RECT rect = {0, 1};
-
-	// 描画範囲と色を設定します
-	vert[0].x = pRect->left;
-	vert[0].y = pRect->top;
-	vert[0].Red   = GetRValue(Color1) << 8;
-	vert[0].Green = GetGValue(Color1) << 8;
-	vert[0].Blue  = GetBValue(Color1) << 8;
-	vert[0].Alpha = 0;
-	vert[1].x = pRect->right;
-	vert[1].y = pRect->bottom;
-	vert[1].Red   = GetRValue(Color2) << 8;
-	vert[1].Green = GetGValue(Color2) << 8;
-	vert[1].Blue  = GetBValue(Color2) << 8;
-	vert[1].Alpha = 0;
-	return GradientFill(hdc, vert, 2, &rect, 1,
-		fHorizontal ? GRADIENT_FILL_RECT_H : GRADIENT_FILL_RECT_V);
-}
-
-void frameRect(HDC dc, LPCRECT rc, COLORREF color, int edgeWidth, int edgeHeight)
-{
-	int x = rc->left;
-	int y = rc->top;
-	int w = rc->right - rc->left;
-	int h = rc->bottom - rc->top;
-
-	HBRUSH brush = ::CreateSolidBrush(color);
-	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
-	if (edgeHeight > 0)
-	{
-		::PatBlt(dc, x, y, w, edgeHeight, PATCOPY);
-		::PatBlt(dc, x, y + h, w, -edgeHeight, PATCOPY);
-	}
-	if (edgeWidth > 0)
-	{
-		::PatBlt(dc, x, y, edgeWidth, h, PATCOPY);
-		::PatBlt(dc, x + w, y, -edgeWidth, h, PATCOPY);
-	}
-	::SelectObject(dc, oldBrush);
-	::DeleteObject(brush);
-}
-
-IMPLEMENT_HOOK_PROC_NULL(void, CDECL, Exedit_FillGradation, (HDC dc, const RECT *rc, BYTE r, BYTE g, BYTE b, BYTE gr, BYTE gg, BYTE gb, int gs, int ge))
-{
-	MY_TRACE(_T("Exedit_FillGradation(%d, %d)\n"), gs, ge);
-
-	COLORREF color1 = RGB(r, g, b);
-	COLORREF color2 = RGB(gr, gg, gb);
-#if 1
-	// 大雑把なグラデーション。
-	TwoColorsGradient(dc, rc, color1, color2, TRUE);
-#else
-	// デフォルト処理に近いグラデーション。
-	if (gs == 0 && ge == 0)
-	{
-		TwoColorsGradient(dc, rc, color1, color1, TRUE);
-	}
-	else
-	{
-		RECT rc1 = *rc;
-		rc1.right = gs;
-		TwoColorsGradient(dc, &rc1, color1, color1, TRUE);
-
-		RECT rc2 = *rc;
-		rc2.left = gs;
-		rc2.right = ge;
-		TwoColorsGradient(dc, &rc2, color1, color2, TRUE);
-
-		RECT rc3 = *rc;
-		rc3.left = ge;
-		TwoColorsGradient(dc, &rc3, color2, color2, TRUE);
-	}
-#endif
-#if 1
-	// 枠も描画するならここを使う。
-	RECT rcFrame = *rc;
-	frameRect(dc, &rcFrame, theApp.m_outerColor, theApp.m_outerEdgeWidth, theApp.m_outerEdgeHeight);
-	::InflateRect(&rcFrame, -theApp.m_outerEdgeWidth, -theApp.m_outerEdgeHeight);
-	frameRect(dc, &rcFrame, theApp.m_innerColor, theApp.m_innerEdgeWidth, theApp.m_innerEdgeHeight);
-#endif
-}
-
-IMPLEMENT_HOOK_PROC_NULL(LRESULT, WINAPI, Exedit_ObjectDialog_WndProc, (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam))
-{
-	return theApp.hook_exedit_wndProc(hwnd, message, wParam, lParam);
-}
-
-COLORREF* g_selectionColor = 0;
-COLORREF* g_selectionEdgeColor = 0;
-COLORREF* g_selectionBkColor = 0;
-
-// CALL を書き換える
-template<class T>
-void hookCall(DWORD address, T hookProc)
-{
-	BYTE code[5];
-	code[0] = 0xE8; // CALL
-	*(DWORD*)&code[1] = (DWORD)hookProc - (address + 5);
-
-	// CALL を書き換える。そのあと命令キャッシュをフラッシュする。
-	::WriteProcessMemory(::GetCurrentProcess(), (LPVOID)address, code, sizeof(code), NULL);
-	::FlushInstructionCache(::GetCurrentProcess(), (LPVOID)address, sizeof(code));
-}
-
-// 絶対アドレスを書き換える
-template<class T>
-void writeAbsoluteAddress(DWORD address, const T* x)
-{
-	// 絶対アドレスを書き換える。そのあと命令キャッシュをフラッシュする。
-	::WriteProcessMemory(::GetCurrentProcess(), (LPVOID)address, &x, sizeof(x), NULL);
-	::FlushInstructionCache(::GetCurrentProcess(), (LPVOID)address, sizeof(x));
-}
-
-void drawLineLeft(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
-{
-	MY_TRACE(_T("drawLineLeft(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
-
-	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerBorderLeftColor);
-	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
-	::PatBlt(dc, mx, my, 1, ly - my, PATCOPY);
-	::SelectObject(dc, oldBrush);
-	::DeleteObject(brush);
-}
-
-void drawLineRight(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
-{
-	MY_TRACE(_T("drawLineRight(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
-
-	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerBorderRightColor);
-	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
-	::PatBlt(dc, mx, my, 1, ly - my, PATCOPY);
-	::SelectObject(dc, oldBrush);
-	::DeleteObject(brush);
-}
-
-void drawLineTop(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
-{
-	MY_TRACE(_T("drawLineTop(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
-
-	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerBorderTopColor);
-	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
-	::PatBlt(dc, mx, my, lx - mx, 1, PATCOPY);
-	::SelectObject(dc, oldBrush);
-	::DeleteObject(brush);
-}
-
-void drawLineBottom(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
-{
-	MY_TRACE(_T("drawLineBottom(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
-
-	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerBorderBottomColor);
-	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
-	::PatBlt(dc, mx, my, lx - mx, 1, PATCOPY);
-	::SelectObject(dc, oldBrush);
-	::DeleteObject(brush);
-}
+#include "OptimizeEditBox_Hook.h"
 
 //---------------------------------------------------------------------
 
@@ -372,6 +16,7 @@ COptimizeEditBoxApp::COptimizeEditBoxApp()
 {
 	// 初期化。基本 0。
 	m_instance = 0;
+	m_filterWindow = 0;
 	m_exeditTimelineWindow = 0;
 	m_exeditObjectDialog = 0;
 	m_timerId = 0;
@@ -382,6 +27,7 @@ COptimizeEditBoxApp::COptimizeEditBoxApp()
 	m_editBoxDelay = 0;
 	m_trackBarDelay = 0;
 	m_usesUnicodeInput = FALSE;
+	m_usesCtrlA = FALSE;
 	m_usesSetRedraw = FALSE;
 	m_usesGradientFill = FALSE;
 
@@ -401,6 +47,8 @@ COptimizeEditBoxApp::COptimizeEditBoxApp()
 	m_layerBorderRightColor = RGB(0x99, 0x99, 0x99);
 	m_layerBorderTopColor = RGB(0x99, 0x99, 0x99);
 	m_layerBorderBottomColor = RGB(0x99, 0x99, 0x99);
+
+	m_addEditBoxHeight = 0;
 }
 
 COptimizeEditBoxApp::~COptimizeEditBoxApp()
@@ -481,23 +129,21 @@ BOOL COptimizeEditBoxApp::initExeditHook(HWND hwnd)
 	true_Exedit_ShowControls = (Type_Exedit_ShowControls)((DWORD)exedit_auf + 0x000305E0);
 	true_Exedit_FillGradation = (Type_Exedit_FillGradation)((DWORD)exedit_auf + 0x00036a70);
 
-	if (m_layerBorderLeftColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x00038845, drawLineLeft);
-	if (m_layerBorderRightColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x000388AA, drawLineRight);
-	if (m_layerBorderTopColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x00038871, drawLineTop);
-	if (m_layerBorderBottomColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x000388DA, drawLineBottom);
+	if (m_layerBorderLeftColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x00038845, Exedit_DrawLineLeft);
+	if (m_layerBorderRightColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x000388AA, Exedit_DrawLineRight);
+	if (m_layerBorderTopColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x00038871, Exedit_DrawLineTop);
+	if (m_layerBorderBottomColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x000388DA, Exedit_DrawLineBottom);
 
 	if (m_selectionColor != CLR_NONE) writeAbsoluteAddress((DWORD)exedit_auf + 0x0003807E, &m_selectionColor);
 	if (m_selectionEdgeColor != CLR_NONE) writeAbsoluteAddress((DWORD)exedit_auf + 0x00038076, &m_selectionEdgeColor);
 	if (m_selectionBkColor != CLR_NONE) writeAbsoluteAddress((DWORD)exedit_auf + 0x00038087, &m_selectionBkColor);
-/*
-	g_selectionColor = (COLORREF*)((DWORD)exedit_auf + 0x00149658);
-	g_selectionEdgeColor = (COLORREF*)((DWORD)exedit_auf + 0x00153880);
-	g_selectionBkColor = (COLORREF*)((DWORD)exedit_auf + 0x001A51D0);
 
-	if (m_selectionColor != CLR_NONE) *g_selectionColor = m_selectionColor; // 選択領域の色
-	if (m_selectionEdgeColor != CLR_NONE) *g_selectionEdgeColor = m_selectionEdgeColor; // 選択領域端の色
-	if (m_selectionBkColor != CLR_NONE) *g_selectionBkColor = m_selectionBkColor; // 選択領域外の色
-*/
+	if (m_addEditBoxHeight)
+	{
+		hookAbsoluteCall((DWORD)exedit_auf + 0x0008C46E, Exedit_CreateEditBox);
+		addInt32((DWORD)exedit_auf + 0x0008CC56 + 1, m_addEditBoxHeight);
+	}
+
 	DetourTransactionBegin();
 	DetourUpdateThread(::GetCurrentThread());
 
@@ -528,7 +174,7 @@ BOOL COptimizeEditBoxApp::initExeditHook(HWND hwnd)
 	}
 }
 
-BOOL COptimizeEditBoxApp::dllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
+BOOL COptimizeEditBoxApp::DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
 {
 	switch (reason)
 	{
@@ -558,9 +204,12 @@ BOOL COptimizeEditBoxApp::dllMain(HINSTANCE instance, DWORD reason, LPVOID reser
 	return TRUE;
 }
 
-BOOL COptimizeEditBoxApp::init(FILTER *fp)
+BOOL COptimizeEditBoxApp::func_init(FILTER *fp)
 {
-	MY_TRACE(_T("COptimizeEditBoxApp::init()\n"));
+	MY_TRACE(_T("COptimizeEditBoxApp::func_init()\n"));
+
+	m_filterWindow = fp->hwnd;
+	MY_TRACE_HEX(m_filterWindow);
 
 	// 拡張編集のタイムラインウィンドウを取得する。
 	m_exeditTimelineWindow = auls::Exedit_GetWindow(fp);
@@ -576,6 +225,7 @@ BOOL COptimizeEditBoxApp::init(FILTER *fp)
 	m_editBoxDelay		= ::GetPrivateProfileInt(_T("Settings"), _T("editBoxDelay"),		m_editBoxDelay, path);
 	m_trackBarDelay		= ::GetPrivateProfileInt(_T("Settings"), _T("trackBarDelay"),		m_trackBarDelay, path);
 	m_usesUnicodeInput	= ::GetPrivateProfileInt(_T("Settings"), _T("usesUnicodeInput"),	m_usesUnicodeInput, path);
+	m_usesCtrlA			= ::GetPrivateProfileInt(_T("Settings"), _T("usesCtrlA"),			m_usesCtrlA, path);
 	m_usesSetRedraw		= ::GetPrivateProfileInt(_T("Settings"), _T("usesSetRedraw"),		m_usesSetRedraw, path);
 	m_usesGradientFill	= ::GetPrivateProfileInt(_T("Settings"), _T("usesGradientFill"),	m_usesGradientFill, path);
 
@@ -609,30 +259,32 @@ BOOL COptimizeEditBoxApp::init(FILTER *fp)
 	m_layerBorderTopColor = ::GetPrivateProfileInt(_T("Settings"), _T("layerBorderTopColor"), m_layerBorderTopColor, path);
 	m_layerBorderBottomColor = ::GetPrivateProfileInt(_T("Settings"), _T("layerBorderBottomColor"), m_layerBorderBottomColor, path);
 
+	m_addEditBoxHeight = ::GetPrivateProfileInt(_T("Settings"), _T("addEditBoxHeight"), m_addEditBoxHeight, path);
+
 	initHook();
 
 	return TRUE;
 }
 
-BOOL COptimizeEditBoxApp::exit(FILTER *fp)
+BOOL COptimizeEditBoxApp::func_exit(FILTER *fp)
 {
-	MY_TRACE(_T("COptimizeEditBoxApp::exit()\n"));
+	MY_TRACE(_T("COptimizeEditBoxApp::func_exit()\n"));
 
 	termHook();
 
 	return TRUE;
 }
 
-BOOL COptimizeEditBoxApp::proc(FILTER *fp, FILTER_PROC_INFO *fpip)
+BOOL COptimizeEditBoxApp::func_proc(FILTER *fp, FILTER_PROC_INFO *fpip)
 {
-	MY_TRACE(_T("COptimizeEditBoxApp::proc()\n"));
+	MY_TRACE(_T("COptimizeEditBoxApp::func_proc()\n"));
 
 	return FALSE;
 }
 
-BOOL COptimizeEditBoxApp::exedit_proc(FILTER *fp, FILTER_PROC_INFO *fpip)
+BOOL COptimizeEditBoxApp::Exedit_func_proc(FILTER *fp, FILTER_PROC_INFO *fpip)
 {
-	MY_TRACE(_T("COptimizeEditBoxApp::exedit_proc()\n"));
+	MY_TRACE(_T("COptimizeEditBoxApp::Exedit_func_proc()\n"));
 
 	// ここで exedit のフィルタ関数の直前のタイミングで処理を行う。
 	// exedit のフィルタ関数の直後だともう一度描画しなければならず、描画処理が 1 つ増えてしまう。
@@ -645,7 +297,7 @@ BOOL COptimizeEditBoxApp::exedit_proc(FILTER *fp, FILTER_PROC_INFO *fpip)
 	return TRUE;
 }
 
-LRESULT COptimizeEditBoxApp::hook_exedit_wndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT COptimizeEditBoxApp::Exedit_ObjectDialog_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 //	MY_TRACE(_T("0x%08X, 0x%08X, 0x%08X)\n"), message, wParam, lParam);
 

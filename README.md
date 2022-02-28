@@ -1,5 +1,6 @@
 # AviUtl プラグイン - エディットボックス最適化
 
+* version 6.0.0 by 蛇色 - 2022/02/28 エディットボックスの高さを変更する機能を追加
 * version 5.0.0 by 蛇色 - 2022/02/12 選択領域外の色などを調整する機能を追加
 * version 4.0.0 by 蛇色 - 2022/02/11 枠線描画の調整機能を追加
 * version 3.0.0 by 蛇色 - 2022/02/08 グラデーションを綺麗にする機能などを追加
@@ -52,6 +53,7 @@ editBoxDelay=0
 ; 例えば 1 秒遅延させたい場合は 1000 を指定します。
 ; 遅延させたくない場合は 0 を指定します。
 usesUnicodeInput=0 ; テキストオブジェクトで UNICODE 文字を入力したい場合は 1 を指定します。
+usesCtrlA=0 ; エディットボックスで Ctrl+A を有効にしたい場合は 1 を指定します。ただし、usesUnicodeInput が 1 のときのみ有効になります。
 usesSetRedraw=0 ; オブジェクト設定ダイアログの最適化を行う場合は 1 を指定します。
 usesGradientFill=0 ; グラデーション描画を変更する場合は 1 を指定します。
 innerColorR=0xff ; 内側の枠の色。
@@ -71,10 +73,11 @@ layerBorderLeftColor=-1 ; レイヤー間ボーダーの左側の色。
 layerBorderRightColor=-1 ; レイヤー間ボーダーの右側の色。
 layerBorderTopColor=-1 ; レイヤー間ボーダーの上側の色。
 layerBorderBottomColor=-1 ; レイヤー間ボーダーの下側の色。
+addEditBoxHeight=0 ; エディットボックスの高さに加算する値を指定します。例えば、200 を指定するとエディットボックスの高さが通常より 200 ピクセル高くなります。
 ```
 
 ## 動作確認
 
 * (必須) AviUtl 1.10 & 拡張編集 0.92 http://spring-fragrance.mints.ne.jp/aviutl/
-* (共存確認) patch.aul r11 https://www.nicovideo.jp/watch/sm39491708
+* (共存確認) patch.aul r14 https://www.nicovideo.jp/watch/sm40087155
 * (一部競合) eclipse_fast 1.00 https://www.nicovideo.jp/watch/sm39756003

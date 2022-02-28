@@ -32,10 +32,12 @@
     <ClInclude Include="..\AviUtl\aulslib\memref2.h">
       <Filter>AviUtl\aulslib</Filter>
     </ClInclude>
+    <ClInclude Include="OptimizeEditBox_Hook.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="OptimizeEditBox.cpp" />
-    <ClCompile Include="OptimizeEditBoxFilter.cpp" />
+    <ClCompile Include="OptimizeEditBox_Filter.cpp" />
+    <ClCompile Include="OptimizeEditBox_Hook.cpp" />
   </ItemGroup>
 </Project>
