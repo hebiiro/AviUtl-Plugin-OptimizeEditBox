@@ -48,7 +48,8 @@ COptimizeEditBoxApp::COptimizeEditBoxApp()
 	m_layerBorderTopColor = RGB(0x99, 0x99, 0x99);
 	m_layerBorderBottomColor = RGB(0x99, 0x99, 0x99);
 
-	m_addEditBoxHeight = 0;
+	m_addTextEditBoxHeight = 0;
+	m_addScriptEditBoxHeight = 0;
 }
 
 COptimizeEditBoxApp::~COptimizeEditBoxApp()
@@ -138,10 +139,16 @@ BOOL COptimizeEditBoxApp::initExeditHook(HWND hwnd)
 	if (m_selectionEdgeColor != CLR_NONE) writeAbsoluteAddress((DWORD)exedit_auf + 0x00038076, &m_selectionEdgeColor);
 	if (m_selectionBkColor != CLR_NONE) writeAbsoluteAddress((DWORD)exedit_auf + 0x00038087, &m_selectionBkColor);
 
-	if (m_addEditBoxHeight)
+	if (m_addTextEditBoxHeight)
 	{
-		hookAbsoluteCall((DWORD)exedit_auf + 0x0008C46E, Exedit_CreateEditBox);
-		addInt32((DWORD)exedit_auf + 0x0008CC56 + 1, m_addEditBoxHeight);
+		hookAbsoluteCall((DWORD)exedit_auf + 0x0008C46E, Exedit_CreateTextEditBox);
+		addInt32((DWORD)exedit_auf + 0x0008CC56 + 1, m_addTextEditBoxHeight);
+	}
+
+	if (m_addScriptEditBoxHeight)
+	{
+		hookAbsoluteCall((DWORD)exedit_auf + 0x00087658, Exedit_CreateScriptEditBox);
+		addInt32((DWORD)exedit_auf + 0x000876DE + 1, m_addScriptEditBoxHeight);
 	}
 
 	DetourTransactionBegin();
@@ -259,7 +266,8 @@ BOOL COptimizeEditBoxApp::func_init(FILTER *fp)
 	m_layerBorderTopColor = ::GetPrivateProfileInt(_T("Settings"), _T("layerBorderTopColor"), m_layerBorderTopColor, path);
 	m_layerBorderBottomColor = ::GetPrivateProfileInt(_T("Settings"), _T("layerBorderBottomColor"), m_layerBorderBottomColor, path);
 
-	m_addEditBoxHeight = ::GetPrivateProfileInt(_T("Settings"), _T("addEditBoxHeight"), m_addEditBoxHeight, path);
+	m_addTextEditBoxHeight = ::GetPrivateProfileInt(_T("Settings"), _T("addTextEditBoxHeight"), m_addTextEditBoxHeight, path);
+	m_addScriptEditBoxHeight = ::GetPrivateProfileInt(_T("Settings"), _T("addScriptEditBoxHeight"), m_addScriptEditBoxHeight, path);
 
 	initHook();
 

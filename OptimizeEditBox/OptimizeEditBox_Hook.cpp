@@ -317,12 +317,22 @@ void Exedit_DrawLineBottom(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
 	::DeleteObject(brush);
 }
 
-HWND WINAPI Exedit_CreateEditBox(DWORD exStyle, LPCWSTR className, LPCWSTR windowName,
+HWND WINAPI Exedit_CreateTextEditBox(DWORD exStyle, LPCWSTR className, LPCWSTR windowName,
 	DWORD style, int x, int y, int w, int h, HWND parent, HMENU menu, HINSTANCE instance, LPVOID param)
 {
-	MY_TRACE(_T("Exedit_CreateEditBox(%ws, %d, %d)\n"), className, w, h);
+	MY_TRACE(_T("Exedit_CreateTextEditBox(%ws, %d, %d)\n"), className, w, h);
 
-	h += theApp.m_addEditBoxHeight;
+	h += theApp.m_addTextEditBoxHeight;
+
+	return ::CreateWindowExW(exStyle, className, windowName, style, x, y, w, h, parent, menu, instance, param);
+}
+
+HWND WINAPI Exedit_CreateScriptEditBox(DWORD exStyle, LPCWSTR className, LPCWSTR windowName,
+	DWORD style, int x, int y, int w, int h, HWND parent, HMENU menu, HINSTANCE instance, LPVOID param)
+{
+	MY_TRACE(_T("Exedit_CreateScriptEditBox(%ws, %d, %d)\n"), className, w, h);
+
+	h += theApp.m_addScriptEditBoxHeight;
 
 	return ::CreateWindowExW(exStyle, className, windowName, style, x, y, w, h, parent, menu, instance, param);
 }

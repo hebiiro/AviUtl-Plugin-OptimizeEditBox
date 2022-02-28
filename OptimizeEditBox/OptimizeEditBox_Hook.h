@@ -45,7 +45,8 @@ void Exedit_DrawLineRight(HDC dc, int mx, int my, int lx, int ly, HPEN pen);
 void Exedit_DrawLineTop(HDC dc, int mx, int my, int lx, int ly, HPEN pen);
 void Exedit_DrawLineBottom(HDC dc, int mx, int my, int lx, int ly, HPEN pen);
 
-HWND WINAPI Exedit_CreateEditBox(DWORD exStyle, LPCWSTR className, LPCWSTR windowName, DWORD style, int x, int y, int w, int h, HWND parent, HMENU menu, HINSTANCE instance, LPVOID param);
+HWND WINAPI Exedit_CreateTextEditBox(DWORD exStyle, LPCWSTR className, LPCWSTR windowName, DWORD style, int x, int y, int w, int h, HWND parent, HMENU menu, HINSTANCE instance, LPVOID param);
+HWND WINAPI Exedit_CreateScriptEditBox(DWORD exStyle, LPCWSTR className, LPCWSTR windowName, DWORD style, int x, int y, int w, int h, HWND parent, HMENU menu, HINSTANCE instance, LPVOID param);
 
 //---------------------------------------------------------------------
 // Function

@@ -39,7 +39,8 @@ public:
 	COLORREF m_layerBorderTopColor;
 	COLORREF m_layerBorderBottomColor;
 
-	int m_addEditBoxHeight;
+	int m_addTextEditBoxHeight;
+	int m_addScriptEditBoxHeight;
 
 public:
 
