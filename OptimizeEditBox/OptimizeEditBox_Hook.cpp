@@ -99,7 +99,7 @@ IMPLEMENT_HOOK_PROC(HWND, WINAPI, CreateWindowExA, (DWORD exStyle, LPCSTR classN
 		return true_CreateWindowExA(exStyle, className, windowName, style, x, y, w, h, parent, menu, instance, param);
 	}
 
-	MY_TRACE(_T("CreateWindowExA(%s, %s)\n"), className, windowName);
+//	MY_TRACE(_T("CreateWindowExA(%s, %s)\n"), className, windowName);
 #if 0
 	if (::lstrcmpiA(className, WC_EDITA) == 0)
 	{
@@ -275,7 +275,7 @@ IMPLEMENT_HOOK_PROC_NULL(LRESULT, WINAPI, Exedit_ObjectDialog_WndProc, (HWND hwn
 
 void Exedit_DrawLineLeft(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
 {
-	MY_TRACE(_T("Exedit_DrawLineLeft(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
+//	MY_TRACE(_T("Exedit_DrawLineLeft(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
 
 	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerBorderLeftColor);
 	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
@@ -286,7 +286,7 @@ void Exedit_DrawLineLeft(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
 
 void Exedit_DrawLineRight(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
 {
-	MY_TRACE(_T("Exedit_DrawLineRight(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
+//	MY_TRACE(_T("Exedit_DrawLineRight(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
 
 	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerBorderRightColor);
 	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
@@ -297,7 +297,7 @@ void Exedit_DrawLineRight(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
 
 void Exedit_DrawLineTop(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
 {
-	MY_TRACE(_T("Exedit_DrawLineTop(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
+//	MY_TRACE(_T("Exedit_DrawLineTop(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
 
 	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerBorderTopColor);
 	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
@@ -308,13 +308,31 @@ void Exedit_DrawLineTop(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
 
 void Exedit_DrawLineBottom(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
 {
-	MY_TRACE(_T("Exedit_DrawLineBottom(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
+//	MY_TRACE(_T("Exedit_DrawLineBottom(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
 
 	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerBorderBottomColor);
 	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
 	::PatBlt(dc, mx, my, lx - mx, 1, PATCOPY);
 	::SelectObject(dc, oldBrush);
 	::DeleteObject(brush);
+}
+
+LRESULT CALLBACK subclassProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+{
+	switch (message)
+	{
+	case WM_SETFONT:
+		{
+			MY_TRACE(_T("WM_SETFONT, 0x%08X, 0x%08X\n"), wParam, lParam);
+
+			if (theApp.m_font)
+				wParam = (WPARAM)theApp.m_font;
+
+			break;
+		}
+	}
+
+	return ::DefSubclassProc(hwnd, message, wParam, lParam);
 }
 
 HWND WINAPI Exedit_CreateTextEditBox(DWORD exStyle, LPCWSTR className, LPCWSTR windowName,
@@ -324,7 +342,9 @@ HWND WINAPI Exedit_CreateTextEditBox(DWORD exStyle, LPCWSTR className, LPCWSTR w
 
 	h += theApp.m_addTextEditBoxHeight;
 
-	return ::CreateWindowExW(exStyle, className, windowName, style, x, y, w, h, parent, menu, instance, param);
+	HWND hwnd = ::CreateWindowExW(exStyle, className, windowName, style, x, y, w, h, parent, menu, instance, param);
+	::SetWindowSubclass(hwnd, subclassProc, (UINT_PTR)&theApp, 0);
+	return hwnd;
 }
 
 HWND WINAPI Exedit_CreateScriptEditBox(DWORD exStyle, LPCWSTR className, LPCWSTR windowName,
@@ -334,7 +354,9 @@ HWND WINAPI Exedit_CreateScriptEditBox(DWORD exStyle, LPCWSTR className, LPCWSTR
 
 	h += theApp.m_addScriptEditBoxHeight;
 
-	return ::CreateWindowExW(exStyle, className, windowName, style, x, y, w, h, parent, menu, instance, param);
+	HWND hwnd = ::CreateWindowExW(exStyle, className, windowName, style, x, y, w, h, parent, menu, instance, param);
+	::SetWindowSubclass(hwnd, subclassProc, (UINT_PTR)&theApp, 0);
+	return hwnd;
 }
 
 //---------------------------------------------------------------------

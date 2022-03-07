@@ -7,6 +7,7 @@
 #include <shlwapi.h>
 #pragma comment(lib, "shlwapi.lib")
 #include <commctrl.h>
+#pragma comment(lib, "comctl32.lib")
 #include <comdef.h>
 #include <mmsystem.h>
 #pragma comment(lib, "winmm.lib")

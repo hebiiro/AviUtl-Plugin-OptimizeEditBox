@@ -50,6 +50,8 @@ COptimizeEditBoxApp::COptimizeEditBoxApp()
 
 	m_addTextEditBoxHeight = 0;
 	m_addScriptEditBoxHeight = 0;
+
+	m_font = 0;
 }
 
 COptimizeEditBoxApp::~COptimizeEditBoxApp()
@@ -269,6 +271,19 @@ BOOL COptimizeEditBoxApp::func_init(FILTER *fp)
 	m_addTextEditBoxHeight = ::GetPrivateProfileInt(_T("Settings"), _T("addTextEditBoxHeight"), m_addTextEditBoxHeight, path);
 	m_addScriptEditBoxHeight = ::GetPrivateProfileInt(_T("Settings"), _T("addScriptEditBoxHeight"), m_addScriptEditBoxHeight, path);
 
+	TCHAR fontName[MAX_PATH] = {};
+	::GetPrivateProfileString(_T("Settings"), _T("fontName"), _T(""), fontName, MAX_PATH, path);
+	if (::lstrlen(fontName) != 0)
+	{
+		int fontSize = ::GetPrivateProfileInt(_T("Settings"), _T("fontSize"), 0, path);
+		int fontPitch = ::GetPrivateProfileInt(_T("Settings"), _T("fontPitch"), 0, path);
+		int dpi = ::GetSystemDpiForProcess(::GetCurrentProcess());
+		fontSize = ::MulDiv(fontSize, dpi, 96);
+		m_font = ::CreateFont(fontSize, 0, 0, 0, 0, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 0, fontPitch, fontName);
+	}
+
+	MY_TRACE_HEX(m_font);
+
 	initHook();
 
 	return TRUE;
@@ -277,6 +292,8 @@ BOOL COptimizeEditBoxApp::func_init(FILTER *fp)
 BOOL COptimizeEditBoxApp::func_exit(FILTER *fp)
 {
 	MY_TRACE(_T("COptimizeEditBoxApp::func_exit()\n"));
+
+	::DeleteObject(m_font), m_font = 0;
 
 	termHook();
 

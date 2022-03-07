@@ -42,6 +42,8 @@ public:
 	int m_addTextEditBoxHeight;
 	int m_addScriptEditBoxHeight;
 
+	HFONT m_font;
+
 public:
 
 	COptimizeEditBoxApp();
