@@ -43,10 +43,10 @@ COptimizeEditBoxApp::COptimizeEditBoxApp()
 	m_selectionEdgeColor = CLR_NONE;
 	m_selectionBkColor = CLR_NONE;
 
-	m_layerBorderLeftColor = RGB(0x99, 0x99, 0x99);
-	m_layerBorderRightColor = RGB(0x99, 0x99, 0x99);
-	m_layerBorderTopColor = RGB(0x99, 0x99, 0x99);
-	m_layerBorderBottomColor = RGB(0x99, 0x99, 0x99);
+	m_layerBorderLeftColor = CLR_NONE;
+	m_layerBorderRightColor = CLR_NONE;
+	m_layerBorderTopColor = CLR_NONE;
+	m_layerBorderBottomColor = CLR_NONE;
 
 	m_addTextEditBoxHeight = 0;
 	m_addScriptEditBoxHeight = 0;
