@@ -277,6 +277,7 @@ void Exedit_DrawLineLeft(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
 {
 //	MY_TRACE(_T("Exedit_DrawLineLeft(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
 
+	if (pen) ::SelectObject(dc, pen);
 	if (theApp.m_layerBorderLeftColor == CLR_NONE) return;
 	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerBorderLeftColor);
 	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
@@ -289,6 +290,7 @@ void Exedit_DrawLineRight(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
 {
 //	MY_TRACE(_T("Exedit_DrawLineRight(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
 
+	if (pen) ::SelectObject(dc, pen);
 	if (theApp.m_layerBorderRightColor == CLR_NONE) return;
 	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerBorderRightColor);
 	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
@@ -301,6 +303,7 @@ void Exedit_DrawLineTop(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
 {
 //	MY_TRACE(_T("Exedit_DrawLineTop(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
 
+	if (pen) ::SelectObject(dc, pen);
 	if (theApp.m_layerBorderTopColor == CLR_NONE) return;
 	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerBorderTopColor);
 	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
@@ -313,10 +316,24 @@ void Exedit_DrawLineBottom(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
 {
 //	MY_TRACE(_T("Exedit_DrawLineBottom(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
 
+	if (pen) ::SelectObject(dc, pen);
 	if (theApp.m_layerBorderBottomColor == CLR_NONE) return;
 	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerBorderBottomColor);
 	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
 	::PatBlt(dc, mx, my, lx - mx, 1, PATCOPY);
+	::SelectObject(dc, oldBrush);
+	::DeleteObject(brush);
+}
+
+void Exedit_DrawLineSeparator(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
+{
+//	MY_TRACE(_T("Exedit_DrawLineSeparator(0x%08X, %d, %d, %d, %d, 0x%08X)\n"), dc, mx, my, lx, ly, pen);
+
+	if (pen) ::SelectObject(dc, pen);
+	if (theApp.m_layerSeparatorColor == CLR_NONE) return;
+	HBRUSH brush = ::CreateSolidBrush(theApp.m_layerSeparatorColor);
+	HBRUSH oldBrush = (HBRUSH)::SelectObject(dc, brush);
+	::PatBlt(dc, mx, my, 1, ly - my, PATCOPY);
 	::SelectObject(dc, oldBrush);
 	::DeleteObject(brush);
 }

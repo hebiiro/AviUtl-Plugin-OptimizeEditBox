@@ -1,5 +1,6 @@
 ﻿# AviUtl プラグイン - エディットボックス最適化
 
+* version 7.1.0 by 蛇色 - 2022/03/17 レイヤー左側のセパレータの色を変更する機能を追加
 * version 7.0.1 by 蛇色 - 2022/03/15 レイヤーの枠をデフォルト色に戻せない問題を修正
 * version 7.0.0 by 蛇色 - 2022/03/07 エディットボックスのフォントを変更する機能を追加
 * version 6.1.0 by 蛇色 - 2022/02/28 スクリプト制御の高さも変えられるように修正
@@ -76,6 +77,7 @@ layerBorderLeftColor=-1 ; レイヤー間ボーダーの左側の色。
 layerBorderRightColor=-1 ; レイヤー間ボーダーの右側の色。
 layerBorderTopColor=-1 ; レイヤー間ボーダーの上側の色。
 layerBorderBottomColor=-1 ; レイヤー間ボーダーの下側の色。
+layerSeparatorColor=-1 ; レイヤーボタンとレイヤーの間の境界線の色。
 addTextEditBoxHeight=0 ; テキストオブジェクトのエディットボックスの高さに加算する値を指定します。例えば、200 を指定するとエディットボックスの高さが通常より 200 ピクセル高くなります。
 addScriptEditBoxHeight=0 ; スクリプト制御のエディットボックスの高さに加算する値を指定します。
 fontName=Segoe UI ; エディットボックスで使用するフォントのフォント名を指定します。
@@ -87,4 +89,3 @@ fontPitch=1 ; 固定幅を指定する場合は 1 を指定します。
 
 * (必須) AviUtl 1.10 & 拡張編集 0.92 http://spring-fragrance.mints.ne.jp/aviutl/
 * (共存確認) patch.aul r14 https://www.nicovideo.jp/watch/sm40087155
-* (一部競合) eclipse_fast 1.00 https://www.nicovideo.jp/watch/sm39756003

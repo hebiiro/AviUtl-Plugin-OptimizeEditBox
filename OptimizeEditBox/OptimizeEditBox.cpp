@@ -47,6 +47,7 @@ COptimizeEditBoxApp::COptimizeEditBoxApp()
 	m_layerBorderRightColor = CLR_NONE;
 	m_layerBorderTopColor = CLR_NONE;
 	m_layerBorderBottomColor = CLR_NONE;
+	m_layerSeparatorColor = CLR_NONE;
 
 	m_addTextEditBoxHeight = 0;
 	m_addScriptEditBoxHeight = 0;
@@ -136,6 +137,7 @@ BOOL COptimizeEditBoxApp::initExeditHook(HWND hwnd)
 	if (m_layerBorderRightColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x000388AA, Exedit_DrawLineRight);
 	if (m_layerBorderTopColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x00038871, Exedit_DrawLineTop);
 	if (m_layerBorderBottomColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x000388DA, Exedit_DrawLineBottom);
+	if (m_layerSeparatorColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x00037A1F, Exedit_DrawLineSeparator);
 
 	if (m_selectionColor != CLR_NONE) writeAbsoluteAddress((DWORD)exedit_auf + 0x0003807E, &m_selectionColor);
 	if (m_selectionEdgeColor != CLR_NONE) writeAbsoluteAddress((DWORD)exedit_auf + 0x00038076, &m_selectionEdgeColor);
@@ -267,6 +269,7 @@ BOOL COptimizeEditBoxApp::func_init(FILTER *fp)
 	m_layerBorderRightColor = ::GetPrivateProfileInt(_T("Settings"), _T("layerBorderRightColor"), m_layerBorderRightColor, path);
 	m_layerBorderTopColor = ::GetPrivateProfileInt(_T("Settings"), _T("layerBorderTopColor"), m_layerBorderTopColor, path);
 	m_layerBorderBottomColor = ::GetPrivateProfileInt(_T("Settings"), _T("layerBorderBottomColor"), m_layerBorderBottomColor, path);
+	m_layerSeparatorColor = ::GetPrivateProfileInt(_T("Settings"), _T("layerSeparatorColor"), m_layerSeparatorColor, path);
 
 	m_addTextEditBoxHeight = ::GetPrivateProfileInt(_T("Settings"), _T("addTextEditBoxHeight"), m_addTextEditBoxHeight, path);
 	m_addScriptEditBoxHeight = ::GetPrivateProfileInt(_T("Settings"), _T("addScriptEditBoxHeight"), m_addScriptEditBoxHeight, path);

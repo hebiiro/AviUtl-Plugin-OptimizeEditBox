@@ -38,6 +38,7 @@ public:
 	COLORREF m_layerBorderRightColor;
 	COLORREF m_layerBorderTopColor;
 	COLORREF m_layerBorderBottomColor;
+	COLORREF m_layerSeparatorColor;
 
 	int m_addTextEditBoxHeight;
 	int m_addScriptEditBoxHeight;
@@ -64,7 +65,6 @@ public:
 	void stopTimer();
 	void timerProc(HWND hwnd, UINT message, UINT_PTR id, DWORD time);
 	static void CALLBACK _timerProc(HWND hwnd, UINT message, UINT_PTR id, DWORD time);
-
 };
 
 extern COptimizeEditBoxApp theApp;
