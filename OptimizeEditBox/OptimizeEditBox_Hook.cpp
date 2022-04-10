@@ -79,50 +79,6 @@ IMPLEMENT_HOOK_PROC(BOOL, WINAPI, PeekMessageA, (LPMSG msg, HWND hwnd, UINT msgF
 //	return true_PeekMessageA(msg, hwnd, msgFilterMin, msgFilterMax, removeMsg);
 }
 
-inline bool isAtom(LPCSTR text)
-{
-	return (DWORD)text <= 0x0000FFFFUL;
-}
-
-inline bool isAtom(LPCWSTR text)
-{
-	return (DWORD)text <= 0x0000FFFFUL;
-}
-
-IMPLEMENT_HOOK_PROC(HWND, WINAPI, CreateWindowExA, (DWORD exStyle, LPCSTR className, LPCSTR windowName,
-	DWORD style, int x, int y, int w, int h, HWND parent, HMENU menu, HINSTANCE instance, LPVOID param))
-{
-	if (isAtom(className))
-	{
-		MY_TRACE(_T("CreateWindowExA(0x%08X, %s)\n"), className, windowName);
-
-		return true_CreateWindowExA(exStyle, className, windowName, style, x, y, w, h, parent, menu, instance, param);
-	}
-
-//	MY_TRACE(_T("CreateWindowExA(%s, %s)\n"), className, windowName);
-#if 0
-	if (::lstrcmpiA(className, WC_EDITA) == 0)
-	{
-		MY_TRACE(_T("エディットボックスを UNICODE で作成します\n"));
-
-		return ::CreateWindowExW(exStyle, (_bstr_t)className, (_bstr_t)windowName, style, x, y, w, h, parent, menu, instance, param);
-	}
-#endif
-#if 0
-	HWND result = ::CreateWindowExW(exStyle, (_bstr_t)className, (_bstr_t)windowName, style, x, y, w, h, parent, menu, instance, param);
-#else
-	HWND result = true_CreateWindowExA(exStyle, className, windowName, style, x, y, w, h, parent, menu, instance, param);
-#endif
-	if (::lstrcmpiA(className, "ExtendedFilterClass") == 0)
-	{
-		MY_TRACE(_T("拡張編集をフックします\n"));
-
-		theApp.initExeditHook(result);
-	}
-
-	return result;
-}
-
 HWND getComboBox(HWND dialog)
 {
 	for (UINT i = 8200; i >= 8100; i--)
@@ -159,7 +115,7 @@ IMPLEMENT_HOOK_PROC_NULL(BOOL, CDECL, Exedit_ShowControls, (int objectIndex))
 	CMyClocker clocker(theApp.m_filterWindow, _T("UsesSetRedraw"));
 
 	// ダイアログのハンドルを取得する。
-	HWND dialog = theApp.m_exeditObjectDialog;
+	HWND dialog = *theApp.m_settingDialog;
 
 	// 描画をロックしてからデフォルト処理を行う。
 	::SendMessage(dialog, WM_SETREDRAW, FALSE, 0);
@@ -268,9 +224,9 @@ IMPLEMENT_HOOK_PROC_NULL(void, CDECL, Exedit_FillGradation, (HDC dc, const RECT 
 #endif
 }
 
-IMPLEMENT_HOOK_PROC_NULL(LRESULT, WINAPI, Exedit_ObjectDialog_WndProc, (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam))
+IMPLEMENT_HOOK_PROC_NULL(LRESULT, WINAPI, Exedit_SettingDialog_WndProc, (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam))
 {
-	return theApp.Exedit_ObjectDialog_WndProc(hwnd, message, wParam, lParam);
+	return theApp.Exedit_SettingDialog_WndProc(hwnd, message, wParam, lParam);
 }
 
 void Exedit_DrawLineLeft(HDC dc, int mx, int my, int lx, int ly, HPEN pen)

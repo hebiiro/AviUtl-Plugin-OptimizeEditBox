@@ -1,5 +1,6 @@
 ﻿# AviUtl プラグイン - エディットボックス最適化
 
+* version 7.1.1 by 蛇色 - 2022/04/10 設定ダイアログのフックを安全な方法に変更
 * version 7.1.0 by 蛇色 - 2022/03/17 レイヤー左側のセパレータの色を変更する機能を追加
 * version 7.0.1 by 蛇色 - 2022/03/15 レイヤーの枠をデフォルト色に戻せない問題を修正
 * version 7.0.0 by 蛇色 - 2022/03/07 エディットボックスのフォントを変更する機能を追加
@@ -88,4 +89,4 @@ fontPitch=1 ; 固定幅を指定する場合は 1 を指定します。
 ## 動作確認
 
 * (必須) AviUtl 1.10 & 拡張編集 0.92 http://spring-fragrance.mints.ne.jp/aviutl/
-* (共存確認) patch.aul r14 https://www.nicovideo.jp/watch/sm40087155
+* (共存確認) patch.aul r18 https://www.nicovideo.jp/watch/sm40087155

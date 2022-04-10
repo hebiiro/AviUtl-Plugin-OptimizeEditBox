@@ -21,7 +21,7 @@ BOOL hook_exedit_func_proc(void *fp, FILTER_PROC_INFO *fpip)
 EXTERN_C FILTER_DLL __declspec(dllexport) * __stdcall GetFilterTable(void)
 {
 	static TCHAR filterName[] = TEXT("エディットボックス最適化");
-	static TCHAR filterInformation[] = TEXT("エディットボックス最適化 version 7.1.0 by 蛇色");
+	static TCHAR filterInformation[] = TEXT("エディットボックス最適化 version 7.1.1 by 蛇色");
 
 	static FILTER_DLL filter =
 	{
@@ -92,9 +92,7 @@ BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip)
 //---------------------------------------------------------------------
 BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, void *editp, FILTER *fp)
 {
-	// TRUE を返すと全体が再描画される
-
-	return FALSE;
+	return theApp.func_WndProc(hwnd, message, wParam, lParam, editp, fp);
 }
 
 //---------------------------------------------------------------------

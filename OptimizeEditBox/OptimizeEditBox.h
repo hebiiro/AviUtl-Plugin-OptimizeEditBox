@@ -8,8 +8,6 @@ public:
 
 	HINSTANCE m_instance;
 	HWND m_filterWindow;
-	HWND m_exeditTimelineWindow;
-	HWND m_exeditObjectDialog;
 	UINT_PTR m_timerId;
 	WPARAM m_wParam;
 	LPARAM m_lParam;
@@ -45,6 +43,9 @@ public:
 
 	HFONT m_font;
 
+	HWND* m_exeditWindow;
+	HWND* m_settingDialog;
+
 public:
 
 	COptimizeEditBoxApp();
@@ -52,14 +53,14 @@ public:
 
 	BOOL initHook();
 	BOOL termHook();
-	BOOL initExeditHook(HWND hwnd);
 
 	BOOL DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved);
 	BOOL func_init(FILTER *fp);
 	BOOL func_exit(FILTER *fp);
 	BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip);
+	BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, void* editp, FILTER* fp);
 	BOOL Exedit_func_proc(FILTER *fp, FILTER_PROC_INFO *fpip);
-	LRESULT Exedit_ObjectDialog_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+	LRESULT Exedit_SettingDialog_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 	void startTimer(WPARAM wParam, LPARAM lParam, int elapse);
 	void stopTimer();

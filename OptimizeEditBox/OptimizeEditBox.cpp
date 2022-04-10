@@ -17,8 +17,6 @@ COptimizeEditBoxApp::COptimizeEditBoxApp()
 	// 初期化。基本 0。
 	m_instance = 0;
 	m_filterWindow = 0;
-	m_exeditTimelineWindow = 0;
-	m_exeditObjectDialog = 0;
 	m_timerId = 0;
 	m_wParam = 0;
 	m_lParam = 0;
@@ -53,6 +51,9 @@ COptimizeEditBoxApp::COptimizeEditBoxApp()
 	m_addScriptEditBoxHeight = 0;
 
 	m_font = 0;
+
+	m_exeditWindow = 0;
+	m_settingDialog = 0;
 }
 
 COptimizeEditBoxApp::~COptimizeEditBoxApp()
@@ -63,6 +64,42 @@ BOOL COptimizeEditBoxApp::initHook()
 {
 	MY_TRACE(_T("COptimizeEditBoxApp::initHook()\n"));
 
+	DWORD exedit_auf = (DWORD)::GetModuleHandle(_T("exedit.auf"));
+
+	m_exeditWindow = (HWND*)(exedit_auf + 0x177A44);
+	m_settingDialog = (HWND*)(exedit_auf + 0x1539C8);
+
+	true_Exedit_SettingDialog_WndProc = writeAbsoluteAddress(
+		exedit_auf + 0x2E800 + 4, hook_Exedit_SettingDialog_WndProc);
+	MY_TRACE_HEX(true_Exedit_SettingDialog_WndProc);
+	MY_TRACE_HEX(hook_Exedit_SettingDialog_WndProc);
+
+	true_Exedit_HideControls = (Type_Exedit_HideControls)(exedit_auf + 0x00030500);
+	true_Exedit_ShowControls = (Type_Exedit_ShowControls)(exedit_auf + 0x000305E0);
+	true_Exedit_FillGradation = (Type_Exedit_FillGradation)(exedit_auf + 0x00036a70);
+
+	if (m_layerBorderLeftColor != CLR_NONE) hookCall(exedit_auf + 0x00038845, Exedit_DrawLineLeft);
+	if (m_layerBorderRightColor != CLR_NONE) hookCall(exedit_auf + 0x000388AA, Exedit_DrawLineRight);
+	if (m_layerBorderTopColor != CLR_NONE) hookCall(exedit_auf + 0x00038871, Exedit_DrawLineTop);
+	if (m_layerBorderBottomColor != CLR_NONE) hookCall(exedit_auf + 0x000388DA, Exedit_DrawLineBottom);
+	if (m_layerSeparatorColor != CLR_NONE) hookCall(exedit_auf + 0x00037A1F, Exedit_DrawLineSeparator);
+
+	if (m_selectionColor != CLR_NONE) writeAbsoluteAddress(exedit_auf + 0x0003807E, &m_selectionColor);
+	if (m_selectionEdgeColor != CLR_NONE) writeAbsoluteAddress(exedit_auf + 0x00038076, &m_selectionEdgeColor);
+	if (m_selectionBkColor != CLR_NONE) writeAbsoluteAddress(exedit_auf + 0x00038087, &m_selectionBkColor);
+
+	if (m_addTextEditBoxHeight)
+	{
+		hookAbsoluteCall(exedit_auf + 0x0008C46E, Exedit_CreateTextEditBox);
+		addInt32(exedit_auf + 0x0008CC56 + 1, m_addTextEditBoxHeight);
+	}
+
+	if (m_addScriptEditBoxHeight)
+	{
+		hookAbsoluteCall(exedit_auf + 0x00087658, Exedit_CreateScriptEditBox);
+		addInt32(exedit_auf + 0x000876DE + 1, m_addScriptEditBoxHeight);
+	}
+
 	DetourTransactionBegin();
 	DetourUpdateThread(::GetCurrentThread());
 
@@ -72,7 +109,16 @@ BOOL COptimizeEditBoxApp::initHook()
 //		ATTACH_HOOK_PROC(PeekMessageA);
 	}
 
-	ATTACH_HOOK_PROC(CreateWindowExA);
+	if (m_usesSetRedraw)
+	{
+		ATTACH_HOOK_PROC(Exedit_HideControls);
+		ATTACH_HOOK_PROC(Exedit_ShowControls);
+	}
+
+	if (m_usesGradientFill)
+	{
+		ATTACH_HOOK_PROC(Exedit_FillGradation);
+	}
 
 	if (DetourTransactionCommit() == NO_ERROR)
 	{
@@ -101,7 +147,16 @@ BOOL COptimizeEditBoxApp::termHook()
 //		DETACH_HOOK_PROC(PeekMessageA);
 	}
 
-	DETACH_HOOK_PROC(CreateWindowExA);
+	if (m_usesSetRedraw)
+	{
+		DETACH_HOOK_PROC(Exedit_HideControls);
+		DETACH_HOOK_PROC(Exedit_ShowControls);
+	}
+
+	if (m_usesGradientFill)
+	{
+		DETACH_HOOK_PROC(Exedit_FillGradation);
+	}
 
 	if (DetourTransactionCommit() == NO_ERROR)
 	{
@@ -117,72 +172,6 @@ BOOL COptimizeEditBoxApp::termHook()
 	}
 
 	return TRUE;
-}
-
-BOOL COptimizeEditBoxApp::initExeditHook(HWND hwnd)
-{
-	MY_TRACE(_T("COptimizeEditBoxApp::initExeditHook(0x%08X)\n"), hwnd);
-
-	// 拡張編集のオブジェクトダイアログのハンドルを変数に格納しておく。
-	m_exeditObjectDialog = hwnd;
-	// 拡張編集のオブジェクトダイアログのウィンドウプロシージャを変数に格納しておく。
-	true_Exedit_ObjectDialog_WndProc = (WNDPROC)::GetClassLong(hwnd, GCL_WNDPROC);
-
-	HMODULE exedit_auf = ::GetModuleHandle(_T("exedit.auf"));
-	true_Exedit_HideControls = (Type_Exedit_HideControls)((DWORD)exedit_auf + 0x00030500);
-	true_Exedit_ShowControls = (Type_Exedit_ShowControls)((DWORD)exedit_auf + 0x000305E0);
-	true_Exedit_FillGradation = (Type_Exedit_FillGradation)((DWORD)exedit_auf + 0x00036a70);
-
-	if (m_layerBorderLeftColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x00038845, Exedit_DrawLineLeft);
-	if (m_layerBorderRightColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x000388AA, Exedit_DrawLineRight);
-	if (m_layerBorderTopColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x00038871, Exedit_DrawLineTop);
-	if (m_layerBorderBottomColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x000388DA, Exedit_DrawLineBottom);
-	if (m_layerSeparatorColor != CLR_NONE) hookCall((DWORD)exedit_auf + 0x00037A1F, Exedit_DrawLineSeparator);
-
-	if (m_selectionColor != CLR_NONE) writeAbsoluteAddress((DWORD)exedit_auf + 0x0003807E, &m_selectionColor);
-	if (m_selectionEdgeColor != CLR_NONE) writeAbsoluteAddress((DWORD)exedit_auf + 0x00038076, &m_selectionEdgeColor);
-	if (m_selectionBkColor != CLR_NONE) writeAbsoluteAddress((DWORD)exedit_auf + 0x00038087, &m_selectionBkColor);
-
-	if (m_addTextEditBoxHeight)
-	{
-		hookAbsoluteCall((DWORD)exedit_auf + 0x0008C46E, Exedit_CreateTextEditBox);
-		addInt32((DWORD)exedit_auf + 0x0008CC56 + 1, m_addTextEditBoxHeight);
-	}
-
-	if (m_addScriptEditBoxHeight)
-	{
-		hookAbsoluteCall((DWORD)exedit_auf + 0x00087658, Exedit_CreateScriptEditBox);
-		addInt32((DWORD)exedit_auf + 0x000876DE + 1, m_addScriptEditBoxHeight);
-	}
-
-	DetourTransactionBegin();
-	DetourUpdateThread(::GetCurrentThread());
-
-	if (m_usesSetRedraw)
-	{
-		ATTACH_HOOK_PROC(Exedit_HideControls);
-		ATTACH_HOOK_PROC(Exedit_ShowControls);
-	}
-
-	if (m_usesGradientFill)
-	{
-		ATTACH_HOOK_PROC(Exedit_FillGradation);
-	}
-
-	ATTACH_HOOK_PROC(Exedit_ObjectDialog_WndProc);
-
-	if (DetourTransactionCommit() == NO_ERROR)
-	{
-		MY_TRACE(_T("API フックのインストールに成功しました\n"));
-
-		return TRUE;
-	}
-	else
-	{
-		MY_TRACE(_T("API フックのインストールに失敗しました\n"));
-
-		return FALSE;
-	}
 }
 
 BOOL COptimizeEditBoxApp::DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
@@ -221,10 +210,6 @@ BOOL COptimizeEditBoxApp::func_init(FILTER *fp)
 
 	m_filterWindow = fp->hwnd;
 	MY_TRACE_HEX(m_filterWindow);
-
-	// 拡張編集のタイムラインウィンドウを取得する。
-	m_exeditTimelineWindow = auls::Exedit_GetWindow(fp);
-	MY_TRACE_HEX(m_exeditTimelineWindow);
 
 	// ini ファイルから設定を読み込む。
 	TCHAR path[MAX_PATH];
@@ -310,6 +295,11 @@ BOOL COptimizeEditBoxApp::func_proc(FILTER *fp, FILTER_PROC_INFO *fpip)
 	return FALSE;
 }
 
+BOOL COptimizeEditBoxApp::func_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, void* editp, FILTER* fp)
+{
+	return FALSE;
+}
+
 BOOL COptimizeEditBoxApp::Exedit_func_proc(FILTER *fp, FILTER_PROC_INFO *fpip)
 {
 	MY_TRACE(_T("COptimizeEditBoxApp::Exedit_func_proc()\n"));
@@ -325,7 +315,7 @@ BOOL COptimizeEditBoxApp::Exedit_func_proc(FILTER *fp, FILTER_PROC_INFO *fpip)
 	return TRUE;
 }
 
-LRESULT COptimizeEditBoxApp::Exedit_ObjectDialog_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT COptimizeEditBoxApp::Exedit_SettingDialog_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 //	MY_TRACE(_T("0x%08X, 0x%08X, 0x%08X)\n"), message, wParam, lParam);
 
@@ -347,7 +337,7 @@ LRESULT COptimizeEditBoxApp::Exedit_ObjectDialog_WndProc(HWND hwnd, UINT message
 			if (m_optimizeTimeLine)
 			{
 				// タイムラインウィンドウが左クリックされているかチェックする。
-				if (::GetActiveWindow() == m_exeditTimelineWindow && ::GetKeyState(VK_LBUTTON) < 0) 
+				if (::GetActiveWindow() == *m_exeditWindow && ::GetKeyState(VK_LBUTTON) < 0) 
 				{
 //					MY_TRACE(_T("エディットボックスメッセージの処理を間引きます\n"));
 					return 0;
@@ -370,7 +360,7 @@ LRESULT COptimizeEditBoxApp::Exedit_ObjectDialog_WndProc(HWND hwnd, UINT message
 		}
 	}
 
-	return true_Exedit_ObjectDialog_WndProc(hwnd, message, wParam, lParam);
+	return true_Exedit_SettingDialog_WndProc(hwnd, message, wParam, lParam);
 }
 
 void COptimizeEditBoxApp::startTimer(WPARAM wParam, LPARAM lParam, int elapse)
@@ -407,7 +397,7 @@ void COptimizeEditBoxApp::stopTimer()
 
 		// 先送りしていたメッセージのデフォルト処理を実行する。
 //		MY_TRACE(_T("デフォルト処理を実行します : WM_COMMAND, 0x%08X, 0x%08X)\n"), m_wParam, m_lParam);
-		true_Exedit_ObjectDialog_WndProc(m_exeditObjectDialog, WM_COMMAND, m_wParam, m_lParam);
+		true_Exedit_SettingDialog_WndProc(*m_settingDialog, WM_COMMAND, m_wParam, m_lParam);
 	}
 }
 

@@ -38,7 +38,7 @@ DECLARE_HOOK_PROC(HWND, WINAPI, CreateWindowExA, (DWORD exStyle, LPCSTR classNam
 DECLARE_HOOK_PROC(void, CDECL, Exedit_HideControls, ());
 DECLARE_HOOK_PROC(BOOL, CDECL, Exedit_ShowControls, (int objectIndex));
 DECLARE_HOOK_PROC(void, CDECL, Exedit_FillGradation, (HDC dc, const RECT *rc, BYTE r, BYTE g, BYTE b, BYTE gr, BYTE gg, BYTE gb, int gs, int ge));
-DECLARE_HOOK_PROC(LRESULT, WINAPI, Exedit_ObjectDialog_WndProc, (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam));
+DECLARE_HOOK_PROC(LRESULT, WINAPI, Exedit_SettingDialog_WndProc, (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam));
 
 void Exedit_DrawLineLeft(HDC dc, int mx, int my, int lx, int ly, HPEN pen);
 void Exedit_DrawLineRight(HDC dc, int mx, int my, int lx, int ly, HPEN pen);
@@ -81,11 +81,16 @@ inline void hookAbsoluteCall(DWORD address, T& hookProc)
 
 // 絶対アドレスを書き換える。
 template<class T>
-inline void writeAbsoluteAddress(DWORD address, const T* x)
+inline T writeAbsoluteAddress(DWORD address, T x)
 {
-	// 絶対アドレスを書き換える。そのあと命令キャッシュをフラッシュする。
+	// 絶対アドレスから読み込む。
+	T retValue = 0;
+	::ReadProcessMemory(::GetCurrentProcess(), (LPVOID)address, &retValue, sizeof(retValue), NULL);
+	// 絶対アドレスを書き換える。
 	::WriteProcessMemory(::GetCurrentProcess(), (LPVOID)address, &x, sizeof(x), NULL);
+	// 命令キャッシュをフラッシュする。
 	::FlushInstructionCache(::GetCurrentProcess(), (LPVOID)address, sizeof(x));
+	return retValue;
 }
 
 // 指定アドレスの値に x を加算する。
