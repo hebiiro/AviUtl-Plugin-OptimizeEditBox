@@ -79,58 +79,6 @@ IMPLEMENT_HOOK_PROC(BOOL, WINAPI, PeekMessageA, (LPMSG msg, HWND hwnd, UINT msgF
 //	return true_PeekMessageA(msg, hwnd, msgFilterMin, msgFilterMax, removeMsg);
 }
 
-HWND getComboBox(HWND dialog)
-{
-	for (UINT i = 8200; i >= 8100; i--)
-	{
-		// ウィンドウハンドルを取得する。
-		HWND hwnd = ::GetDlgItem(dialog, i);
-
-		// コンボボックスかどうかクラス名で調べる。
-		TCHAR className[MAX_PATH] = {};
-		::GetClassName(hwnd, className, MAX_PATH);
-		if (::lstrcmpi(className, WC_COMBOBOX) != 0) continue;
-
-		if (::IsWindowVisible(hwnd)) // ウィンドウが可視なら
-		{
-			// ID - 2 のウィンドウを返す。
-			return ::GetDlgItem(dialog, i - 2);
-		}
-	}
-
-	return 0;
-}
-
-IMPLEMENT_HOOK_PROC_NULL(void, CDECL, Exedit_HideControls, ())
-{
-	MY_TRACE(_T("Exedit_HideControls()\n"));
-
-	true_Exedit_HideControls();
-}
-
-IMPLEMENT_HOOK_PROC_NULL(BOOL, CDECL, Exedit_ShowControls, (int objectIndex))
-{
-	MY_TRACE(_T("Exedit_ShowControls(%d)\n"), objectIndex);
-
-	CMyClocker clocker(theApp.m_filterWindow, _T("UsesSetRedraw"));
-
-	// ダイアログのハンドルを取得する。
-	HWND dialog = *theApp.m_settingDialog;
-
-	// 描画をロックしてからデフォルト処理を行う。
-	::SendMessage(dialog, WM_SETREDRAW, FALSE, 0);
-	BOOL result = true_Exedit_ShowControls(objectIndex);
-	::SendMessage(dialog, WM_SETREDRAW, TRUE, 0);
-//	::RedrawWindow(dialog, NULL, NULL, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN);
-
-	// 「アニメーション効果」のコンボボックスにメッセージを送信する。
-	HWND combobox = getComboBox(dialog);
-	MY_TRACE_HEX(combobox);
-	::SendMessage(dialog, WM_CTLCOLOREDIT, 0, (LPARAM)combobox);
-
-	return result;
-}
-
 // http://iooiau.net/tips/web20back.html
 // 2色のグラデーションを描画する関数です
 BOOL TwoColorsGradient(
@@ -222,11 +170,6 @@ IMPLEMENT_HOOK_PROC_NULL(void, CDECL, Exedit_FillGradation, (HDC dc, const RECT 
 	::InflateRect(&rcFrame, -theApp.m_outerEdgeWidth, -theApp.m_outerEdgeHeight);
 	frameRect(dc, &rcFrame, theApp.m_innerColor, theApp.m_innerEdgeWidth, theApp.m_innerEdgeHeight);
 #endif
-}
-
-IMPLEMENT_HOOK_PROC_NULL(LRESULT, WINAPI, Exedit_SettingDialog_WndProc, (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam))
-{
-	return theApp.Exedit_SettingDialog_WndProc(hwnd, message, wParam, lParam);
 }
 
 void Exedit_DrawLineLeft(HDC dc, int mx, int my, int lx, int ly, HPEN pen)

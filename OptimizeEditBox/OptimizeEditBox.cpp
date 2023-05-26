@@ -16,17 +16,9 @@ COptimizeEditBoxApp::COptimizeEditBoxApp()
 {
 	// 初期化。基本 0。
 	m_instance = 0;
-	m_filterWindow = 0;
-	m_timerId = 0;
-	m_wParam = 0;
-	m_lParam = 0;
 
-	m_optimizeTimeLine = FALSE;
-	m_editBoxDelay = 0;
-	m_trackBarDelay = 0;
 	m_usesUnicodeInput = FALSE;
 	m_usesCtrlA = FALSE;
-	m_usesSetRedraw = FALSE;
 	m_usesGradientFill = FALSE;
 
 	m_innerColor = RGB(0xff, 0xff, 0xff);
@@ -51,9 +43,6 @@ COptimizeEditBoxApp::COptimizeEditBoxApp()
 	m_addScriptEditBoxHeight = 0;
 
 	m_font = 0;
-
-	m_exeditWindow = 0;
-	m_settingDialog = 0;
 }
 
 COptimizeEditBoxApp::~COptimizeEditBoxApp()
@@ -66,16 +55,6 @@ BOOL COptimizeEditBoxApp::initHook()
 
 	DWORD exedit_auf = (DWORD)::GetModuleHandle(_T("exedit.auf"));
 
-	m_exeditWindow = (HWND*)(exedit_auf + 0x177A44);
-	m_settingDialog = (HWND*)(exedit_auf + 0x1539C8);
-
-	true_Exedit_SettingDialog_WndProc = writeAbsoluteAddress(
-		exedit_auf + 0x2E800 + 4, hook_Exedit_SettingDialog_WndProc);
-	MY_TRACE_HEX(true_Exedit_SettingDialog_WndProc);
-	MY_TRACE_HEX(hook_Exedit_SettingDialog_WndProc);
-
-	true_Exedit_HideControls = (Type_Exedit_HideControls)(exedit_auf + 0x00030500);
-	true_Exedit_ShowControls = (Type_Exedit_ShowControls)(exedit_auf + 0x000305E0);
 	true_Exedit_FillGradation = (Type_Exedit_FillGradation)(exedit_auf + 0x00036a70);
 
 	if (m_layerBorderLeftColor != CLR_NONE) hookCall(exedit_auf + 0x00038845, Exedit_DrawLineLeft);
@@ -109,12 +88,6 @@ BOOL COptimizeEditBoxApp::initHook()
 //		ATTACH_HOOK_PROC(PeekMessageA);
 	}
 
-	if (m_usesSetRedraw)
-	{
-		ATTACH_HOOK_PROC(Exedit_HideControls);
-		ATTACH_HOOK_PROC(Exedit_ShowControls);
-	}
-
 	if (m_usesGradientFill)
 	{
 		ATTACH_HOOK_PROC(Exedit_FillGradation);
@@ -145,12 +118,6 @@ BOOL COptimizeEditBoxApp::termHook()
 	{
 		DETACH_HOOK_PROC(GetMessageA);
 //		DETACH_HOOK_PROC(PeekMessageA);
-	}
-
-	if (m_usesSetRedraw)
-	{
-		DETACH_HOOK_PROC(Exedit_HideControls);
-		DETACH_HOOK_PROC(Exedit_ShowControls);
 	}
 
 	if (m_usesGradientFill)
@@ -208,28 +175,18 @@ BOOL COptimizeEditBoxApp::func_init(FILTER *fp)
 {
 	MY_TRACE(_T("COptimizeEditBoxApp::func_init()\n"));
 
-	m_filterWindow = fp->hwnd;
-	MY_TRACE_HEX(m_filterWindow);
-
 	// ini ファイルから設定を読み込む。
 	TCHAR path[MAX_PATH];
 	::GetModuleFileName(m_instance, path, MAX_PATH);
 	::PathRenameExtension(path, _T(".ini"));
 	MY_TRACE_TSTR(path);
 
-	m_optimizeTimeLine	= ::GetPrivateProfileInt(_T("Settings"), _T("optimizeTimeLine"),	m_optimizeTimeLine, path);
-	m_editBoxDelay		= ::GetPrivateProfileInt(_T("Settings"), _T("editBoxDelay"),		m_editBoxDelay, path);
-	m_trackBarDelay		= ::GetPrivateProfileInt(_T("Settings"), _T("trackBarDelay"),		m_trackBarDelay, path);
 	m_usesUnicodeInput	= ::GetPrivateProfileInt(_T("Settings"), _T("usesUnicodeInput"),	m_usesUnicodeInput, path);
 	m_usesCtrlA			= ::GetPrivateProfileInt(_T("Settings"), _T("usesCtrlA"),			m_usesCtrlA, path);
-	m_usesSetRedraw		= ::GetPrivateProfileInt(_T("Settings"), _T("usesSetRedraw"),		m_usesSetRedraw, path);
 	m_usesGradientFill	= ::GetPrivateProfileInt(_T("Settings"), _T("usesGradientFill"),	m_usesGradientFill, path);
 
-	MY_TRACE_INT(m_optimizeTimeLine);
-	MY_TRACE_INT(m_editBoxDelay);
-	MY_TRACE_INT(m_trackBarDelay);
 	MY_TRACE_INT(m_usesUnicodeInput);
-	MY_TRACE_INT(m_usesSetRedraw);
+	MY_TRACE_INT(m_usesCtrlA);
 	MY_TRACE_INT(m_usesGradientFill);
 
 	BYTE innerColorR = (BYTE)::GetPrivateProfileInt(_T("Settings"), _T("innerColorR"), GetRValue(m_innerColor), path);
@@ -293,128 +250,6 @@ BOOL COptimizeEditBoxApp::func_proc(FILTER *fp, FILTER_PROC_INFO *fpip)
 	MY_TRACE(_T("COptimizeEditBoxApp::func_proc()\n"));
 
 	return FALSE;
-}
-
-BOOL COptimizeEditBoxApp::func_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, void* editp, FILTER* fp)
-{
-	return FALSE;
-}
-
-BOOL COptimizeEditBoxApp::Exedit_func_proc(FILTER *fp, FILTER_PROC_INFO *fpip)
-{
-	MY_TRACE(_T("COptimizeEditBoxApp::Exedit_func_proc()\n"));
-
-	// ここで exedit のフィルタ関数の直前のタイミングで処理を行う。
-	// exedit のフィルタ関数の直後だともう一度描画しなければならず、描画処理が 1 つ増えてしまう。
-
-	// フレーム画像を更新する必要があるので
-	// タイマーを止めて exedit のテキストオブジェクトにデフォルト処理を実行させる。
-	// これによって exedit のフレーム画像更新の準備が整う。
-	stopTimer();
-
-	return TRUE;
-}
-
-LRESULT COptimizeEditBoxApp::Exedit_SettingDialog_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-//	MY_TRACE(_T("0x%08X, 0x%08X, 0x%08X)\n"), message, wParam, lParam);
-
-	// WM_COMMAND メッセージが来たかチェックする。
-	if (message == WM_COMMAND)
-	{
-		UINT code = HIWORD(wParam);
-		UINT id = LOWORD(wParam);
-		HWND sender = (HWND)lParam;
-
-//		MY_TRACE(_T("WM_COMMAND, 0x%04X, 0x%04X, 0x%08X)\n"), code, id, sender);
-
-		// エディットボックス通知メッセージの EN_CHANGE もしくは EN_UPDATE が来たかチェックする。
-		// この 2 つをチェックするのは exedit がテキストオブジェクトは EN_CHANGE で処理をしているが、その他のオブジェクトは EN_UPDATE で処理をしているため。
-		if (code == EN_CHANGE || code == EN_UPDATE)
-		{
-//			MY_TRACE(_T("WM_COMMAND, EN_CHANGE || EN_UPDATE, 0x%04X, 0x%04X, 0x%08X)\n"), code, id, sender);
-
-			if (m_optimizeTimeLine)
-			{
-				// タイムラインウィンドウが左クリックされているかチェックする。
-				if (::GetActiveWindow() == *m_exeditWindow && ::GetKeyState(VK_LBUTTON) < 0) 
-				{
-//					MY_TRACE(_T("エディットボックスメッセージの処理を間引きます\n"));
-					return 0;
-				}
-			}
-		}
-
-		// エディットボックス通知メッセージの EN_CHANGE がテキストオブジェクト関係のエディットボックスから送られてきたかチェックする。
-		if (code == EN_CHANGE && id >= 0x5600)
-		{
-//			MY_TRACE(_T("WM_COMMAND, code == EN_CHANGE && id >= 0x5600, 0x%04X, 0x%04X, 0x%08X)\n"), code, id, sender);
-
-			// エディットボックスの処理を遅延させるかチェックする。
-			if (m_editBoxDelay > 0)
-			{
-//				MY_TRACE(_T("タイマーを使ってエディットボックスメッセージの処理を先送りにします\n"));
-				startTimer(wParam, lParam, m_editBoxDelay);
-				return 0;
-			}
-		}
-	}
-
-	return true_Exedit_SettingDialog_WndProc(hwnd, message, wParam, lParam);
-}
-
-void COptimizeEditBoxApp::startTimer(WPARAM wParam, LPARAM lParam, int elapse)
-{
-//	MY_TRACE(_T("COptimizeEditBoxApp::startTimer(0x%08X, 0x%08X, %d)\n"), wParam, lParam, elapse);
-
-	if (m_timerId)
-	{
-//		MY_TRACE(_T("タイマーはすでにセットされています\n"));
-
-		// スレッドタイマーは上書きができないので削除してから作り直す。
-		// (ウィンドウタイマーとして実装すれば上書きできるのでいちいち削除しなくてもよい)
-		::KillTimer(0, m_timerId), m_timerId = 0;
-	}
-
-	// タイマー停止時に実行するコマンド用の変数をメンバ変数に格納しておく。
-	m_wParam = wParam;
-	m_lParam = lParam;
-	// スレッドタイマーをセットする。
-	m_timerId = ::SetTimer(0, 0, elapse, _timerProc);
-//	MY_TRACE_HEX(m_wParam);
-//	MY_TRACE_HEX(m_lParam);
-//	MY_TRACE_HEX(m_timerId);
-}
-
-void COptimizeEditBoxApp::stopTimer()
-{
-	MY_TRACE(_T("COptimizeEditBoxApp::stopTimer()\n"));
-
-	if (m_timerId)
-	{
-		// タイマーを削除する。
-		::KillTimer(0, m_timerId), m_timerId = 0;
-
-		// 先送りしていたメッセージのデフォルト処理を実行する。
-//		MY_TRACE(_T("デフォルト処理を実行します : WM_COMMAND, 0x%08X, 0x%08X)\n"), m_wParam, m_lParam);
-		true_Exedit_SettingDialog_WndProc(*m_settingDialog, WM_COMMAND, m_wParam, m_lParam);
-	}
-}
-
-void COptimizeEditBoxApp::timerProc(HWND hwnd, UINT message, UINT_PTR id, DWORD time)
-{
-	MY_TRACE(_T("COptimizeEditBoxApp::timerProc(0x%08X, 0x%08X)\n"), id, time);
-
-	if (id == m_timerId)
-	{
-		// このタイマーを止めてデフォルト処理を実行する。
-		stopTimer();
-	}
-}
-
-void CALLBACK COptimizeEditBoxApp::_timerProc(HWND hwnd, UINT message, UINT_PTR id, DWORD time)
-{
-	theApp.timerProc(hwnd, message, id, time);
 }
 
 //---------------------------------------------------------------------

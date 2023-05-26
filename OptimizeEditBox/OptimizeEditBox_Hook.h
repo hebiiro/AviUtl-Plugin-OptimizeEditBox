@@ -35,10 +35,7 @@
 DECLARE_HOOK_PROC(BOOL, WINAPI, GetMessageA, (LPMSG msg, HWND hwnd, UINT msgFilterMin, UINT msgFilterMax));
 DECLARE_HOOK_PROC(BOOL, WINAPI, PeekMessageA, (LPMSG msg, HWND hwnd, UINT msgFilterMin, UINT msgFilterMax, UINT removeMsg));
 DECLARE_HOOK_PROC(HWND, WINAPI, CreateWindowExA, (DWORD exStyle, LPCSTR className, LPCSTR windowName, DWORD style, int x, int y, int w, int h, HWND parent, HMENU menu, HINSTANCE instance, LPVOID param));
-DECLARE_HOOK_PROC(void, CDECL, Exedit_HideControls, ());
-DECLARE_HOOK_PROC(BOOL, CDECL, Exedit_ShowControls, (int objectIndex));
 DECLARE_HOOK_PROC(void, CDECL, Exedit_FillGradation, (HDC dc, const RECT *rc, BYTE r, BYTE g, BYTE b, BYTE gr, BYTE gg, BYTE gb, int gs, int ge));
-DECLARE_HOOK_PROC(LRESULT, WINAPI, Exedit_SettingDialog_WndProc, (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam));
 
 void Exedit_DrawLineLeft(HDC dc, int mx, int my, int lx, int ly, HPEN pen);
 void Exedit_DrawLineRight(HDC dc, int mx, int my, int lx, int ly, HPEN pen);
