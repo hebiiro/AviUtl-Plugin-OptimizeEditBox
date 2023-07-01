@@ -67,7 +67,7 @@ BOOL COptimizeEditBoxApp::initHook()
 	if (m_selectionEdgeColor != CLR_NONE) writeAbsoluteAddress(exedit_auf + 0x00038076, &m_selectionEdgeColor);
 	if (m_selectionBkColor != CLR_NONE) writeAbsoluteAddress(exedit_auf + 0x00038087, &m_selectionBkColor);
 
-	if (m_addTextEditBoxHeight || m_font != nullptr)
+	if (m_addTextEditBoxHeight != 0 || m_font != nullptr)
 	{
 		hookAbsoluteCall(exedit_auf + 0x0008C46E, Exedit_CreateTextEditBox);
 		addInt32(exedit_auf + 0x0008CC56 + 1, m_addTextEditBoxHeight);
