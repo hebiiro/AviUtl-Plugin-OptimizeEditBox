@@ -190,6 +190,7 @@
     <ClInclude Include="..\AviUtl\aulslib\memref.h" />
     <ClInclude Include="..\AviUtl\aulslib\memref2.h" />
     <ClInclude Include="..\Common\MyTracer.h" />
+    <ClInclude Include="edit_predicates.h" />
     <ClInclude Include="OptimizeEditBox.h" />
     <ClInclude Include="OptimizeEditBox_Hook.h" />
     <ClInclude Include="pch.h" />

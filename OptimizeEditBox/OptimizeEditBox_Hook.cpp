@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "OptimizeEditBox.h"
 #include "OptimizeEditBox_Hook.h"
+#include "edit_predicates.h"
 
 //---------------------------------------------------------------------
 
@@ -16,58 +17,56 @@ IMPLEMENT_HOOK_PROC(BOOL, WINAPI, GetMessageA, (LPMSG msg, HWND hwnd, UINT msgFi
 	HWND dlg = ::GetParent(msg->hwnd);
 	if (!dlg) return result;
 
-	// ウィンドウがエディットボックスか確認する。
-	TCHAR className[MAX_PATH] = {};
-	::GetClassName(msg->hwnd, className, MAX_PATH);
-//	MY_TRACE_TSTR(className);
-	if (::lstrcmpi(className, WC_EDIT) == 0)
-	{
-/*
-		// この処理を実行しても ESC キーでダイアログが非表示になってしまう。
-		if (msg->message == WM_KEYDOWN ||
-			msg->message == WM_KEYUP ||
-			msg->message == WM_CHAR ||
-			msg->message == WM_IME_KEYDOWN ||
-			msg->message == WM_IME_KEYUP ||
-			msg->message == WM_IME_CHAR)
-		{
-			if (msg->wParam == VK_ESCAPE ||
-				msg->wParam == VK_TAB ||
-				msg->wParam == VK_RETURN)
+	// ウィンドウが対象のエディットボックスか確認する。
+	if (check_window_classname(msg->hwnd, WC_EDITW) &&
+		editbox_check_style(msg->hwnd)) {
+
+		if (msg->message == WM_KEYDOWN) {
+			switch (msg->wParam)
 			{
-				return result;
+			case VK_ESCAPE:
+				// ESC キーでダイアログが非表示になるのを防ぐ．
+				goto discard_message;
+
+			case 'A':
+				if (theApp.m_usesCtrlA && ::GetKeyState(VK_CONTROL) < 0) {
+					// Ctrl + A.
+					::SendMessageW(msg->hwnd, EM_SETSEL, 0, -1);
+					goto discard_message;
+				}
+				break;
 			}
 		}
-*/
-		if (theApp.m_usesCtrlA)
-		{
-			if (msg->message == WM_KEYDOWN &&
-				msg->wParam == 'A' &&
-				::GetKeyState(VK_CONTROL) < 0)
-			{
-				MY_TRACE(_T("Ctrl+A キーが押されました\n"));
+		/*		// ↑ この処理の分岐少ない版．
+				if (msg->message == WM_KEYDOWN && msg->wParam == VK_ESCAPE)
+					goto discard_message;
 
-				Edit_SetSel(msg->hwnd, 0, -1);
+				if (theApp.m_usesCtrlA) {
+					if (msg->message == WM_KEYDOWN &&
+						msg->wParam == 'A' &&
+						::GetKeyState(VK_CONTROL) < 0) {
 
-				msg->hwnd = 0;
-				msg->message = WM_NULL;
-				msg->wParam = 0;
-				msg->lParam = 0;
-				return result;
-			}
-		}
+						::SendMessageW(msg->hwnd, EM_SETSEL, 0, -1);
+						goto discard_message;
+					}
+				}
+		*/
 
 		// ダイアログメッセージを処理する。
 		if (::IsDialogMessageW(dlg, msg))
 		{
 			// このメッセージはディスパッチしてはならないので WM_NULL に置き換える。
-			msg->hwnd = 0;
-			msg->message = WM_NULL;
-			msg->wParam = 0;
-			msg->lParam = 0;
+			goto discard_message;
 		}
 	}
 #endif
+	return result;
+
+discard_message:
+	msg->hwnd = nullptr;
+	msg->message = WM_NULL;
+	msg->wParam = 0;
+	msg->lParam = 0;
 	return result;
 }
 
@@ -237,46 +236,54 @@ void Exedit_DrawLineSeparator(HDC dc, int mx, int my, int lx, int ly, HPEN pen)
 	::DeleteObject(brush);
 }
 
-LRESULT CALLBACK subclassProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+static LRESULT CALLBACK subclassproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam, UINT_PTR id, DWORD_PTR)
 {
-	switch (message)
+	switch (msg)
 	{
 	case WM_SETFONT:
-		{
-			MY_TRACE(_T("WM_SETFONT, 0x%08X, 0x%08X\n"), wParam, lParam);
+		MY_TRACE(_T("WM_SETFONT, 0x%08X, 0x%08X\n"), wparam, lparam);
 
-			if (theApp.m_font)
-				wParam = (WPARAM)theApp.m_font;
-
-			break;
-		}
+		wparam = reinterpret_cast<WPARAM>(theApp.m_font); // theApp.m_font is not null here.
+		//[[fallthrough]];
+	case WM_DESTROY:
+		::RemoveWindowSubclass(hwnd, subclassproc, id);
+		break;
 	}
 
-	return ::DefSubclassProc(hwnd, message, wParam, lParam);
+	return ::DefSubclassProc(hwnd, msg, wparam, lparam);
+}
+
+static HWND Exedit_CreateEditBox(DWORD exStyle, LPCWSTR className, LPCWSTR windowName,
+	DWORD style, int x, int y, int w, int h,
+	HWND parent, HMENU menu, HINSTANCE instance, void* param)
+{
+	HWND hwnd = ::CreateWindowExW(exStyle, className, windowName,
+		style, x, y, w, h, parent, menu, instance, param);
+
+	if (theApp.m_font != nullptr) ::SetWindowSubclass(hwnd, subclassproc,
+		reinterpret_cast<uintptr_t>(&theApp), 0);
+
+	return hwnd;
 }
 
 HWND WINAPI Exedit_CreateTextEditBox(DWORD exStyle, LPCWSTR className, LPCWSTR windowName,
-	DWORD style, int x, int y, int w, int h, HWND parent, HMENU menu, HINSTANCE instance, LPVOID param)
+	DWORD style, int x, int y, int w, int h,
+	HWND parent, HMENU menu, HINSTANCE instance, void* param)
 {
 	MY_TRACE(_T("Exedit_CreateTextEditBox(%ws, %d, %d)\n"), className, w, h);
 
-	h += theApp.m_addTextEditBoxHeight;
-
-	HWND hwnd = ::CreateWindowExW(exStyle, className, windowName, style, x, y, w, h, parent, menu, instance, param);
-	::SetWindowSubclass(hwnd, subclassProc, (UINT_PTR)&theApp, 0);
-	return hwnd;
+	return Exedit_CreateEditBox(exStyle, className, windowName,
+		style, x, y, w, h + theApp.m_addTextEditBoxHeight, parent, menu, instance, param);
 }
 
 HWND WINAPI Exedit_CreateScriptEditBox(DWORD exStyle, LPCWSTR className, LPCWSTR windowName,
-	DWORD style, int x, int y, int w, int h, HWND parent, HMENU menu, HINSTANCE instance, LPVOID param)
+	DWORD style, int x, int y, int w, int h,
+	HWND parent, HMENU menu, HINSTANCE instance, void* param)
 {
 	MY_TRACE(_T("Exedit_CreateScriptEditBox(%ws, %d, %d)\n"), className, w, h);
 
-	h += theApp.m_addScriptEditBoxHeight;
-
-	HWND hwnd = ::CreateWindowExW(exStyle, className, windowName, style, x, y, w, h, parent, menu, instance, param);
-	::SetWindowSubclass(hwnd, subclassProc, (UINT_PTR)&theApp, 0);
-	return hwnd;
+	return Exedit_CreateEditBox(exStyle, className, windowName,
+		style, x, y, w, h + theApp.m_addScriptEditBoxHeight, parent, menu, instance, param);
 }
 
 //---------------------------------------------------------------------
