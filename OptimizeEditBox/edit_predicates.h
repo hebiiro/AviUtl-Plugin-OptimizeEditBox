@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include <cstdint>
 #include <array>
@@ -8,25 +8,25 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-// ƒeƒLƒXƒgƒIƒuƒWƒFƒNƒgCƒXƒNƒŠƒvƒg§ŒäCƒJƒƒ‰ƒXƒNƒŠƒvƒg§Œä‚ÌƒGƒfƒBƒbƒgƒ{ƒbƒNƒX‚Í
-// “Á’è‚Ì ID ‚ÉŠ„‚èU‚ç‚ê‚é:
+// ãƒ†ã‚­ã‚¹ãƒˆã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆï¼Œã‚¹ã‚¯ãƒªãƒ—ãƒˆåˆ¶å¾¡ï¼Œã‚«ãƒ¡ãƒ©ã‚¹ã‚¯ãƒªãƒ—ãƒˆåˆ¶å¾¡ã®ã‚¨ãƒ‡ã‚£ãƒƒãƒˆãƒœãƒƒã‚¯ã‚¹ã¯
+// ç‰¹å®šã® ID ã«å‰²ã‚ŠæŒ¯ã‚‰ã‚Œã‚‹:
 //	ID = id_edit_base + idx_filter * id_diff_per_filter + id_ofs_****
-// ID ‚ª‘¼ƒRƒ“ƒgƒ[ƒ‹‚Æd•¡‚·‚é‚±‚Æ‚Í‚ ‚é‚ªC‚»‚ê‚ªŒ´ˆö‚Å–¾Šm‚ÈŒë“®ì‚ğ‚µ‚½ŒoŒ±‚Í‚±‚Ìƒvƒ‰ƒOƒCƒ“‚Å‚Í¡‚Ì‚Æ‚±‚ë‚È‚¢D
+// ID ãŒä»–ã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ«ã¨é‡è¤‡ã™ã‚‹ã“ã¨ã¯ã‚ã‚‹ãŒï¼Œãã‚ŒãŒåŸå› ã§æ˜ç¢ºãªèª¤å‹•ä½œã‚’ã—ãŸçµŒé¨“ã¯ã“ã®ãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã§ã¯ä»Šã®ã¨ã“ã‚ãªã„ï¼
 inline bool editbox_check_id(uint32_t id) {
 	static constexpr uint32_t id_edit_base = 22100, id_diff_per_filter = 0x100,
 		id_ofs_text = 1, id_ofs_script = 0;
 	return id >= id_edit_base &&
 		(id - id_edit_base) % id_diff_per_filter <= std::max(id_ofs_text, id_ofs_script);
 }
-// ƒEƒBƒ“ƒhƒEƒNƒ‰ƒX‚Ì–¼‘Oˆê’v‚ğŠm”F‚·‚éŠÖ”D–ˆ‰ñ MAX_PATH •¶š‚àŠm•Û‚µ‚È‚­‚Ä‚à‚æ‚¢D
+// ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã‚¯ãƒ©ã‚¹ã®åå‰ä¸€è‡´ã‚’ç¢ºèªã™ã‚‹é–¢æ•°ï¼æ¯å› MAX_PATH æ–‡å­—ã‚‚ç¢ºä¿ã—ãªãã¦ã‚‚ã‚ˆã„ï¼
 template<size_t N>
 inline bool check_window_classname(HWND hwnd, const wchar_t(&name)[N])
 {
 	wchar_t buff[N + 1];
 	return ::GetClassNameW(hwnd, buff, std::size(buff)) == N - 1 && std::wcscmp(buff, name) == 0;
 }
-// ‘ÎÛƒGƒfƒBƒbƒgƒ{ƒbƒNƒX‚ÌƒXƒ^ƒCƒ‹Šm”F€–ÚD
-// •¡”s•\¦CEnterƒL[‚Å‰üs‰Â”\C‰B‚ê‚Ä‚¢‚È‚¢‚Æ‚¢‚¤ğŒ‚ğ–‚½‚·‚à‚Ì‚Æ‚·‚éD
+// å¯¾è±¡ã‚¨ãƒ‡ã‚£ãƒƒãƒˆãƒœãƒƒã‚¯ã‚¹ã®ã‚¹ã‚¿ã‚¤ãƒ«ç¢ºèªé …ç›®ï¼
+// è¤‡æ•°è¡Œè¡¨ç¤ºï¼ŒEnterã‚­ãƒ¼ã§æ”¹è¡Œå¯èƒ½ï¼Œéš ã‚Œã¦ã„ãªã„ã¨ã„ã†æ¡ä»¶ã‚’æº€ãŸã™ã‚‚ã®ã¨ã™ã‚‹ï¼
 inline bool editbox_check_style(HWND hwnd)
 {
 	constexpr auto
