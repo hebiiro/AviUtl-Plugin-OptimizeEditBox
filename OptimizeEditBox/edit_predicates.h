@@ -13,7 +13,7 @@
 //	ID = id_edit_base + idx_filter * id_diff_per_filter + id_ofs_****
 // ID が他コントロールと重複することはあるが，それが原因で明確な誤動作をした経験はこのプラグインでは今のところない．
 inline bool editbox_check_id(uint32_t id) {
-	static constexpr uint32_t id_edit_base = 22100, id_diff_per_filter = 0x100,
+	constexpr uint32_t id_edit_base = 22100, id_diff_per_filter = 0x100,
 		id_ofs_text = 1, id_ofs_script = 0;
 	return id >= id_edit_base &&
 		(id - id_edit_base) % id_diff_per_filter <= std::max(id_ofs_text, id_ofs_script);
@@ -27,8 +27,7 @@ inline bool check_window_classname(HWND hwnd, const wchar_t(&name)[N])
 }
 // 対象エディットボックスのスタイル確認項目．
 // 複数行表示，Enterキーで改行可能，隠れていないという条件を満たすものとする．
-inline bool editbox_check_style(HWND hwnd)
-{
+inline bool editbox_check_style(HWND hwnd) {
 	constexpr auto
 		style = ES_MULTILINE | ES_WANTRETURN | WS_VISIBLE,
 		style_mask = style;

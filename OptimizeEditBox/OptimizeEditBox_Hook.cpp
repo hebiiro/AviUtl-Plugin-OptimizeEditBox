@@ -5,6 +5,37 @@
 
 //---------------------------------------------------------------------
 
+static bool IsTargetEditMessage(MSG* msg, HWND dlg)
+{
+	// ウィンドウがエディットボックスか確認する。
+	if (!check_window_classname(msg->hwnd, WC_EDITW)) return false;
+
+	// Ctrl + A.
+	if (theApp.m_usesCtrlA) {
+		if (msg->message == WM_KEYDOWN &&
+			msg->wParam == 'A' &&
+			::GetKeyState(VK_CONTROL) < 0) {
+			::SendMessageW(msg->hwnd, EM_SETSEL, 0, -1);
+			return true;
+		}
+	}
+
+	// テキストオブジェクトやスクリプト制御のエディットボックスなら ::IsDialogMessageW() を通さずに処理．
+	// これをしないと ESC キーでダイアログが非表示になったり，普通にタブ文字が入力できなくなる．
+	if (editbox_check_style(msg->hwnd) &&
+		check_window_classname(dlg, L"ExtendedFilterClass") &&
+		editbox_check_id(::GetDlgCtrlID(msg->hwnd))) {
+		::TranslateMessage(msg);
+		::DispatchMessageW(msg);
+		return true;
+	}
+
+	// ダイアログメッセージを処理する。
+	if (::IsDialogMessageW(dlg, msg)) return true;
+
+	return false;
+}
+
 IMPLEMENT_HOOK_PROC(BOOL, WINAPI, GetMessageA, (LPMSG msg, HWND hwnd, UINT msgFilterMin, UINT msgFilterMax))
 {
 #if 1
@@ -17,56 +48,14 @@ IMPLEMENT_HOOK_PROC(BOOL, WINAPI, GetMessageA, (LPMSG msg, HWND hwnd, UINT msgFi
 	HWND dlg = ::GetParent(msg->hwnd);
 	if (!dlg) return result;
 
-	// ウィンドウが対象のエディットボックスか確認する。
-	if (check_window_classname(msg->hwnd, WC_EDITW) &&
-		editbox_check_style(msg->hwnd)) {
-
-		if (msg->message == WM_KEYDOWN) {
-			switch (msg->wParam)
-			{
-			case VK_ESCAPE:
-				// ESC キーでダイアログが非表示になるのを防ぐ．
-				goto discard_message;
-
-			case 'A':
-				if (theApp.m_usesCtrlA && ::GetKeyState(VK_CONTROL) < 0) {
-					// Ctrl + A.
-					::SendMessageW(msg->hwnd, EM_SETSEL, 0, -1);
-					goto discard_message;
-				}
-				break;
-			}
-		}
-		/*		// ↑ この処理の分岐少ない版．
-				if (msg->message == WM_KEYDOWN && msg->wParam == VK_ESCAPE)
-					goto discard_message;
-
-				if (theApp.m_usesCtrlA) {
-					if (msg->message == WM_KEYDOWN &&
-						msg->wParam == 'A' &&
-						::GetKeyState(VK_CONTROL) < 0) {
-
-						::SendMessageW(msg->hwnd, EM_SETSEL, 0, -1);
-						goto discard_message;
-					}
-				}
-		*/
-
-		// ダイアログメッセージを処理する。
-		if (::IsDialogMessageW(dlg, msg))
-		{
-			// このメッセージはディスパッチしてはならないので WM_NULL に置き換える。
-			goto discard_message;
-		}
+	if (IsTargetEditMessage(msg, dlg)) {
+		// このメッセージはディスパッチしてはならないので WM_NULL に置き換える。
+		msg->hwnd = nullptr;
+		msg->message = WM_NULL;
+		msg->wParam = 0;
+		msg->lParam = 0;
 	}
 #endif
-	return result;
-
-discard_message:
-	msg->hwnd = nullptr;
-	msg->message = WM_NULL;
-	msg->wParam = 0;
-	msg->lParam = 0;
 	return result;
 }
 
