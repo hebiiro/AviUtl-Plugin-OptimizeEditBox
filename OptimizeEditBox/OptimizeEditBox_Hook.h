@@ -32,7 +32,11 @@
 //---------------------------------------------------------------------
 // Api Hook
 
-DECLARE_HOOK_PROC(BOOL, WINAPI, GetMessageA, (LPMSG msg, HWND hwnd, UINT msgFilterMin, UINT msgFilterMax));
+//DECLARE_HOOK_PROC(BOOL, WINAPI, GetMessageA, (LPMSG msg, HWND hwnd, UINT msgFilterMin, UINT msgFilterMax));
+decltype(GetMessageA) hook_ctrlA_GetMessageA;
+extern decltype(&GetMessageA) true_GetMessageA, hook_GetMessageA;
+constexpr decltype(&DispatchMessageA) hook_DispatchMessageA = DispatchMessageW;
+extern decltype(&DispatchMessageA) true_DispatchMessageA;
 DECLARE_HOOK_PROC(BOOL, WINAPI, PeekMessageA, (LPMSG msg, HWND hwnd, UINT msgFilterMin, UINT msgFilterMax, UINT removeMsg));
 DECLARE_HOOK_PROC(HWND, WINAPI, CreateWindowExA, (DWORD exStyle, LPCSTR className, LPCSTR windowName, DWORD style, int x, int y, int w, int h, HWND parent, HMENU menu, HINSTANCE instance, LPVOID param));
 DECLARE_HOOK_PROC(void, CDECL, Exedit_FillGradation, (HDC dc, const RECT *rc, BYTE r, BYTE g, BYTE b, BYTE gr, BYTE gg, BYTE gb, int gs, int ge));

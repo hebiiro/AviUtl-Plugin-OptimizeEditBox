@@ -84,7 +84,9 @@ BOOL COptimizeEditBoxApp::initHook()
 
 	if (m_usesUnicodeInput)
 	{
+		if (m_usesCtrlA) hook_GetMessageA = hook_ctrlA_GetMessageA;
 		ATTACH_HOOK_PROC(GetMessageA);
+		ATTACH_HOOK_PROC(DispatchMessageA);
 //		ATTACH_HOOK_PROC(PeekMessageA);
 	}
 
@@ -117,6 +119,7 @@ BOOL COptimizeEditBoxApp::termHook()
 	if (m_usesUnicodeInput)
 	{
 		DETACH_HOOK_PROC(GetMessageA);
+		DETACH_HOOK_PROC(DispatchMessageA);
 //		DETACH_HOOK_PROC(PeekMessageA);
 	}
 

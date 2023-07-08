@@ -5,38 +5,8 @@
 
 //---------------------------------------------------------------------
 
-static bool IsTargetEditMessage(MSG* msg, HWND dlg)
-{
-	// ウィンドウがエディットボックスか確認する。
-	if (!check_window_classname(msg->hwnd, WC_EDITW)) return false;
-
-	// Ctrl + A.
-	if (theApp.m_usesCtrlA) {
-		if (msg->message == WM_KEYDOWN &&
-			msg->wParam == 'A' &&
-			::GetKeyState(VK_CONTROL) < 0) {
-			::SendMessageW(msg->hwnd, EM_SETSEL, 0, -1);
-			return true;
-		}
-	}
-
-	// テキストオブジェクトやスクリプト制御のエディットボックスなら ::IsDialogMessageW() を通さずに処理．
-	// これをしないと ESC キーでダイアログが非表示になったり，普通にタブ文字が入力できなくなる．
-	if (editbox_check_style(msg->hwnd) &&
-		check_window_classname(dlg, L"ExtendedFilterClass") &&
-		editbox_check_id(::GetDlgCtrlID(msg->hwnd))) {
-		::TranslateMessage(msg);
-		::DispatchMessageW(msg);
-		return true;
-	}
-
-	// ダイアログメッセージを処理する。
-	if (::IsDialogMessageW(dlg, msg)) return true;
-
-	return false;
-}
-
-IMPLEMENT_HOOK_PROC(BOOL, WINAPI, GetMessageA, (LPMSG msg, HWND hwnd, UINT msgFilterMin, UINT msgFilterMax))
+decltype(&GetMessageA) true_GetMessageA = GetMessageA, hook_GetMessageA = GetMessageW;
+BOOL WINAPI hook_ctrlA_GetMessageA(LPMSG msg, HWND hwnd, UINT msgFilterMin, UINT msgFilterMax)
 {
 #if 1
 	BOOL result = ::GetMessageW(msg, hwnd, msgFilterMin, msgFilterMax);
@@ -44,20 +14,21 @@ IMPLEMENT_HOOK_PROC(BOOL, WINAPI, GetMessageA, (LPMSG msg, HWND hwnd, UINT msgFi
 	BOOL result = true_GetMessageA(msg, hwnd, msgFilterMin, msgFilterMax);
 #endif
 #if 1
-	// 親ウィンドウを取得する。
-	HWND dlg = ::GetParent(msg->hwnd);
-	if (!dlg) return result;
+	// Ctrl + A.
+	if (msg->message == WM_KEYDOWN &&
+		msg->wParam == 'A' &&
+		::GetKeyState(VK_CONTROL) < 0 &&
+		check_window_classname(msg->hwnd, WC_EDITW)) {
 
-	if (IsTargetEditMessage(msg, dlg)) {
-		// このメッセージはディスパッチしてはならないので WM_NULL に置き換える。
-		msg->hwnd = nullptr;
-		msg->message = WM_NULL;
-		msg->wParam = 0;
-		msg->lParam = 0;
+		// テキスト全選択してこのメッセージはディスパッチしない．次のメッセージまで待機．
+		::SendMessageW(msg->hwnd, EM_SETSEL, 0, -1);
+		return hook_ctrlA_GetMessageA(msg, hwnd, msgFilterMin, msgFilterMax);
 	}
 #endif
 	return result;
 }
+
+decltype(&DispatchMessageA) true_DispatchMessageA = DispatchMessageA;
 
 IMPLEMENT_HOOK_PROC(BOOL, WINAPI, PeekMessageA, (LPMSG msg, HWND hwnd, UINT msgFilterMin, UINT msgFilterMax, UINT removeMsg))
 {
