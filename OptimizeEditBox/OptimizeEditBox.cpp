@@ -67,13 +67,13 @@ BOOL COptimizeEditBoxApp::initHook()
 	if (m_selectionEdgeColor != CLR_NONE) writeAbsoluteAddress(exedit_auf + 0x00038076, &m_selectionEdgeColor);
 	if (m_selectionBkColor != CLR_NONE) writeAbsoluteAddress(exedit_auf + 0x00038087, &m_selectionBkColor);
 
-	if (m_addTextEditBoxHeight)
+	if (m_addTextEditBoxHeight != 0 || m_font != nullptr)
 	{
 		hookAbsoluteCall(exedit_auf + 0x0008C46E, Exedit_CreateTextEditBox);
 		addInt32(exedit_auf + 0x0008CC56 + 1, m_addTextEditBoxHeight);
 	}
 
-	if (m_addScriptEditBoxHeight)
+	if (m_addScriptEditBoxHeight != 0 || m_font != nullptr)
 	{
 		hookAbsoluteCall(exedit_auf + 0x00087658, Exedit_CreateScriptEditBox);
 		addInt32(exedit_auf + 0x000876DE + 1, m_addScriptEditBoxHeight);
@@ -84,7 +84,9 @@ BOOL COptimizeEditBoxApp::initHook()
 
 	if (m_usesUnicodeInput)
 	{
+		if (m_usesCtrlA) hook_GetMessageA = hook_ctrlA_GetMessageA;
 		ATTACH_HOOK_PROC(GetMessageA);
+		ATTACH_HOOK_PROC(DispatchMessageA);
 //		ATTACH_HOOK_PROC(PeekMessageA);
 	}
 
@@ -117,6 +119,7 @@ BOOL COptimizeEditBoxApp::termHook()
 	if (m_usesUnicodeInput)
 	{
 		DETACH_HOOK_PROC(GetMessageA);
+		DETACH_HOOK_PROC(DispatchMessageA);
 //		DETACH_HOOK_PROC(PeekMessageA);
 	}
 
